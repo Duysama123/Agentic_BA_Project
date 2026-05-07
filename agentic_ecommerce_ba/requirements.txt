@@ -1,0 +1,29 @@
+# Agentic & Core
+pydantic>=2.5.0
+python-dotenv>=1.0.0
+transitions>=0.9.0
+
+# LLM Providers
+google-genai>=0.1.0
+openai>=1.10.0
+
+# RAG & Embeddings
+faiss-cpu>=1.7.4
+sentence-transformers>=2.2.2
+PyPDF2>=3.0.0
+
+# Vision & OpenCV
+opencv-python>=4.8.0
+numpy>=1.24.0
+Pillow>=10.1.0
+
+# UI
+streamlit>=1.30.0
+
+# API (Optional)
+fastapi>=0.109.0
+uvicorn>=0.27.0
+
+# Database & Export
+supabase>=2.3.0
+fpdf2>=2.7.7
