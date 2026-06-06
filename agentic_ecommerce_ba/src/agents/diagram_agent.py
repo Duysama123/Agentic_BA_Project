@@ -54,7 +54,13 @@ def sanitize_mermaid(mermaid_code: str) -> str:
     # Only apply to flowchart sections
     if code.startswith("flowchart") or code.startswith("graph"):
         code = re.sub(r'([A-Za-z0-9_-]+)\s*(\[|\{|\(\(|\()([^\]\}\)]+)(\]|\}|\)\)|\))', fix_labels, code)
-    
+        
+        # Guardrail: Remove empty arrow labels that crash dagre layout
+        # Convert -->|| or -->| | to just -->
+        code = re.sub(r'-->\|\s*\|', '-->', code)
+        code = re.sub(r'-\.-\>\|\s*\|', '-.->', code)
+        code = re.sub(r'==>\|\s*\|', '==>', code)
+        
     return code.strip()
 
 class DiagramAgent(BaseAgent):

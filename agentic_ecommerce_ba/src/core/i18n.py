@@ -206,7 +206,8 @@ TRANSLATIONS = {
             "   - SAI: Khách Hàng->>Hệ Thống: Đăng nhập\n"
             "   - ĐÚNG: participant User as Khách Hàng\n"
             "           participant Sys as Hệ Thống\n"
-            "           User->>Sys: Đăng nhập"
+            "           User->>Sys: Đăng nhập\n"
+            "5. ĐỂ TRÁNH LỖI DAGRE LAYOUT: TUYỆT ĐỐI KHÔNG sử dụng nhãn mũi tên rỗng (VD: sai `-->||` hoặc `-->| |`, đúng: `-->`). KHÔNG lạm dụng các luồng tự trỏ về chính nó (self-loops) gây lỗi render."
         ),
         "en": (
             "You are a Technical Writer / System Architect specialized in drawing system diagrams using Mermaid.js code.\n"
@@ -225,7 +226,8 @@ TRANSLATIONS = {
             "   - WRONG: Customer A->>System: Login\n"
             "   - CORRECT: participant Cust as Customer A\n"
             "              participant Sys as System\n"
-            "              Cust->>Sys: Login"
+            "              Cust->>Sys: Login\n"
+            "5. TO AVOID DAGRE LAYOUT CRASHES: NEVER use empty arrow labels (WRONG: `-->||` or `-->| |`, CORRECT: `-->`). DO NOT create complex self-referencing loops that break layout calculations."
         ),
     },
     "prompt_da_system": {
