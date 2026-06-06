@@ -193,10 +193,31 @@ def append_extras_to_docx(docx_path: str, diagram_data_json: str = None, testcas
 
 def convert_docx_to_pdf(docx_path: str, pdf_path: str) -> bool:
     """
-    Convert DOCX to PDF using docx2pdf.
-    Requires Microsoft Word installed on the machine.
-    Returns True if successful, False otherwise.
+    Convert DOCX to PDF.
+    Tries LibreOffice first (for Linux/Streamlit Cloud).
+    Falls back to docx2pdf (for Windows/Mac with MS Word installed).
     """
+    import platform
+    import subprocess
+    import os
+
+    # 1. Try LibreOffice on Linux (Streamlit Cloud)
+    if platform.system() == 'Linux':
+        try:
+            outdir = os.path.dirname(pdf_path)
+            subprocess.run(
+                ["libreoffice", "--headless", "--convert-to", "pdf", docx_path, "--outdir", outdir],
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            # libreoffice saves the file as same name but .pdf
+            expected_pdf = os.path.join(outdir, os.path.splitext(os.path.basename(docx_path))[0] + ".pdf")
+            if expected_pdf != pdf_path and os.path.exists(expected_pdf):
+                os.rename(expected_pdf, pdf_path)
+            return True
+        except Exception as e:
+            print(f"LibreOffice conversion failed: {e}")
+
+    # 2. Try docx2pdf for local Windows/Mac users
     try:
         from docx2pdf import convert
         import pythoncom
