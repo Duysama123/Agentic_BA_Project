@@ -142,57 +142,70 @@ def main():
     
     footer {visibility: hidden;}
     
-    /* === Supabase-style Sidebar === */
+    /* === Modern Sidebar (CodingLab style) === */
     [data-testid="stSidebar"] {
-        background-color: #1C1C1C !important;
-        border-right: 1px solid #2E2E2E !important;
+        background-color: #111827 !important; /* Deep dark blue */
+        border-right: none !important;
     }
     [data-testid="stSidebar"] * {
-        color: #E0E0E0 !important;
+        color: #E5E7EB !important;
     }
     [data-testid="stSidebar"] .stMarkdown h3 {
-        color: #9CA3AF !important;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
+        color: #FFFFFF !important;
+        font-size: 1.2rem;
+        font-weight: 700;
         margin-top: 1rem;
-    }
-    [data-testid="stSidebar"] .stButton > button {
-        background-color: transparent;
-        border: 1px solid #3E3E3E;
-        color: #E0E0E0 !important;
-        border-radius: 6px;
-        font-size: 0.85rem;
-        transition: all 0.15s ease;
-        text-align: left;
-    }
-    [data-testid="stSidebar"] .stButton > button:hover {
-        background-color: #2A2A2A;
-        border-color: #4ADE80;
-    }
-    [data-testid="stSidebar"] .stButton > button[kind="primary"] {
-        background-color: #22C55E;
-        border: none;
-        color: #000000 !important;
-        font-weight: 600;
-    }
-    [data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {
-        background-color: #4ADE80;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
     [data-testid="stSidebar"] hr {
-        border-color: #2E2E2E;
+        border-color: #374151;
+        margin: 1.5rem 0;
     }
     
-    /* Sign out button (last button in sidebar) */
-    [data-testid="stSidebar"] .stButton:last-of-type > button {
-        background-color: #dc2626 !important;
-        color: #FFFFFF !important;
+    /* Menu Item Buttons (Secondary) */
+    [data-testid="stSidebar"] .stButton > button[kind="secondary"] {
+        background-color: transparent !important;
         border: none !important;
-        font-weight: 600;
-        text-align: center;
+        color: #9CA3AF !important;
+        border-radius: 8px !important;
+        font-size: 0.95rem !important;
+        font-weight: 500 !important;
+        transition: all 0.2s ease !important;
+        text-align: left !important;
+        display: flex !important;
+        justify-content: flex-start !important;
+        padding: 0.6rem 1rem !important;
+        margin-bottom: 0.2rem !important;
     }
-    [data-testid="stSidebar"] .stButton:last-of-type > button:hover {
-        background-color: #b91c1c !important;
+    [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover {
+        background-color: #1F2937 !important;
+        color: #FFFFFF !important;
+    }
+    
+    /* Active State Trick for Secondary buttons */
+    [data-testid="stSidebar"] .stButton > button[kind="secondary"]:focus {
+        background-color: #3730A3 !important;
+        color: #FFFFFF !important;
+    }
+    
+    /* Primary Button (New Project) */
+    [data-testid="stSidebar"] .stButton > button[kind="primary"] {
+        background-color: #4F46E5 !important; /* Indigo blue */
+        border: none !important;
+        color: #FFFFFF !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        text-align: center !important;
+        display: flex !important;
+        justify-content: center !important;
+        padding: 0.7rem 1rem !important;
+        margin-bottom: 1rem !important;
+    }
+    [data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {
+        background-color: #4338CA !important;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3) !important;
     }
     
     .hero-title { 
@@ -373,20 +386,15 @@ def main():
     if 'pipeline_start_time' not in st.session_state:
         st.session_state.pipeline_start_time = None
 
-    # Sidebar - Supabase-style
+    # Sidebar - Modern CodingLab-style
     with st.sidebar:
         # Brand
         st.markdown("### Specify.ai")
         st.caption(st.session_state.user.email)
         
-        if st.button("Sign Out", use_container_width=True):
-            st.session_state.db.logout()
-            st.session_state.user = None
-            st.rerun()
-            
         st.markdown("---")
         
-        if st.button("+ New Project", type="primary", use_container_width=True):
+        if st.button("➕ New Project", type="primary", use_container_width=True):
             st.session_state.pipeline_state = 'IDLE'
             for key in ['cache_vision', 'cache_ba', 'cache_diagram', 'cache_qa', 'cache_testcase']:
                 st.session_state[key] = None
@@ -395,53 +403,46 @@ def main():
             st.session_state.pipeline_start_time = None
             st.rerun()
         
-        st.markdown("### PROJECT HISTORY")
+        st.markdown("### 📂 PROJECT HISTORY")
             
         try:
             projects = st.session_state.db.get_projects(st.session_state.user.id)
             if not projects:
                 st.caption("No projects yet.")
             else:
-                project_options = {f"{p['name']} ({p['created_at'][:10]})": p for p in projects}
-                
-                selected_proj_name = st.selectbox(
-                    "Select a project", 
-                    options=["-- Select a past project --"] + list(project_options.keys()),
-                    label_visibility="collapsed"
-                )
-                
-                if selected_proj_name != "-- Select a past project --":
-                    if st.button("Load Project", use_container_width=True):
-                        p = project_options[selected_proj_name]
-                        details = st.session_state.db.get_project_details(p['id'])
-                        if details:
-                            if details['image_base64']:
-                                st.session_state.image_bytes = base64.b64decode(details['image_base64'])
-                            st.session_state.image_name = details['name']
-                            st.session_state.user_notes = details['user_notes']
-                            
-                            st.session_state.cache_vision = dict_to_obj(details.get('vision_data'))
-                            st.session_state.cache_ba = dict_to_obj(details.get('ba_data'))
-                            st.session_state.cache_diagram = dict_to_obj(details.get('diagram_data'))
-                            qa_raw = details.get('qa_data', {})
-                            if qa_raw and isinstance(qa_raw, dict) and '_step_timings' in qa_raw:
-                                st.session_state.step_timings = qa_raw.pop('_step_timings')
-                            else:
-                                st.session_state.step_timings = {}
-                            st.session_state.cache_qa = dict_to_obj(qa_raw)
-                            st.session_state.cache_testcase = dict_to_obj(details.get('testcase_data', details.get('da_data'))) # Use testcase_data (fallback to da_data if not renamed yet)
-                            
-                            st.session_state.pipeline_state = 'COMPLETED'
-                            st.session_state.active_project_id = p['id']
-                            st.rerun()
+                with st.container(height=350, border=False):
+                    for p in projects:
+                        btn_name = f"📄 {p['name'][:25]}" # Truncate long names slightly
+                        if st.button(btn_name, use_container_width=True, key=f"hist_{p['id']}"):
+                            details = st.session_state.db.get_project_details(p['id'])
+                            if details:
+                                if details['image_base64']:
+                                    st.session_state.image_bytes = base64.b64decode(details['image_base64'])
+                                st.session_state.image_name = details['name']
+                                st.session_state.user_notes = details['user_notes']
+                                
+                                st.session_state.cache_vision = dict_to_obj(details.get('vision_data'))
+                                st.session_state.cache_ba = dict_to_obj(details.get('ba_data'))
+                                st.session_state.cache_diagram = dict_to_obj(details.get('diagram_data'))
+                                qa_raw = details.get('qa_data', {})
+                                if qa_raw and isinstance(qa_raw, dict) and '_step_timings' in qa_raw:
+                                    st.session_state.step_timings = qa_raw.pop('_step_timings')
+                                else:
+                                    st.session_state.step_timings = {}
+                                st.session_state.cache_qa = dict_to_obj(qa_raw)
+                                st.session_state.cache_testcase = dict_to_obj(details.get('testcase_data', details.get('da_data')))
+                                
+                                st.session_state.pipeline_state = 'COMPLETED'
+                                st.session_state.active_project_id = p['id']
+                                st.rerun()
         except Exception as e:
             st.error(f"Failed to load history: {e}")
         
-        # Custom API Key Input inside an expander to save space
         st.markdown("---")
-        with st.expander("API Key Configuration"):
+        
+        with st.expander("⚙️ Settings"):
             custom_key = st.text_input(
-                "Custom Gemini Key (Optional)", 
+                "Gemini API Key (Optional)", 
                 type="password", 
                 help="Enter your personal Gemini API Key from Google AI Studio to avoid shared quota rate limits."
             )
@@ -449,7 +450,7 @@ def main():
                 os.environ["GEMINI_API_KEY"] = custom_key.strip()
                 if "GEMINI_API_KEYS" in os.environ:
                     del os.environ["GEMINI_API_KEYS"]
-                st.caption("Status: Using your custom API key.")
+                st.caption("Using your custom API key.")
             else:
                 os.environ["GEMINI_API_KEY"] = st.session_state.orig_gemini_api_key
                 if st.session_state.orig_gemini_api_keys:
@@ -457,9 +458,15 @@ def main():
                 elif "GEMINI_API_KEYS" in os.environ:
                     del os.environ["GEMINI_API_KEYS"]
                 if os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEYS"):
-                    st.caption("Status: Using shared default API keys.")
+                    st.caption("Using shared default keys.")
                 else:
-                    st.caption("Status: No API key set! Please enter a key.")
+                    st.caption("No API key set!")
+
+        # Logout button
+        if st.button("🚪 Logout", use_container_width=True):
+            st.session_state.db.logout()
+            st.session_state.user = None
+            st.rerun()
 
     # Header
     st.markdown("<h1 class='hero-title'>Specify.ai</h1>", unsafe_allow_html=True)
