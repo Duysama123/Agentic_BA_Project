@@ -171,20 +171,6 @@ def main():
         color: #FFFFFF !important;
     }
     
-    /* Restore Red Sign Out Button */
-    [data-testid="stSidebar"] .stButton:last-of-type > button {
-        background-color: #dc2626 !important;
-        color: #FFFFFF !important;
-        border: none !important;
-        font-weight: 600 !important;
-        text-align: center !important;
-        display: flex !important;
-        justify-content: center !important;
-    }
-    [data-testid="stSidebar"] .stButton:last-of-type > button:hover {
-        background-color: #b91c1c !important;
-    }
-    
     /* Menu Item Buttons (Secondary) */
     [data-testid="stSidebar"] .stButton > button[kind="secondary"] {
         background-color: transparent !important;
@@ -209,6 +195,22 @@ def main():
     [data-testid="stSidebar"] .stButton > button[kind="secondary"]:focus {
         background-color: #3730A3 !important;
         color: #FFFFFF !important;
+    }
+    
+    /* Restore Red Sign Out Button (placed after to override generic secondary) */
+    [data-testid="stSidebar"] .stButton:last-of-type > button[kind="secondary"],
+    [data-testid="stSidebar"] div:last-child > .stButton > button[kind="secondary"] {
+        background-color: #dc2626 !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        font-weight: 600 !important;
+        text-align: center !important;
+        display: flex !important;
+        justify-content: center !important;
+    }
+    [data-testid="stSidebar"] .stButton:last-of-type > button[kind="secondary"]:hover,
+    [data-testid="stSidebar"] div:last-child > .stButton > button[kind="secondary"]:hover {
+        background-color: #b91c1c !important;
     }
     
     /* Primary Button (New Project) */
