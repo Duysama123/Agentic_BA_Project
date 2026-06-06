@@ -44,6 +44,36 @@ class BAAgent(BaseAgent):
         
         return result
 
+    def generate_requirements_stream(self, ui_analysis_json: str, business_rules_context: str = "", stream_callback=None) -> SRSDocument:
+        """Streaming variant — yields chunks to stream_callback for live UI rendering."""
+        
+        system_prompt = (
+            "You are an Expert Business Analyst. Your task is to write a comprehensive Software Requirements Specification (SRS) "
+            "following the IEEE 830 standard based on provided UI Analysis and Business Rules Context.\n"
+            "CRITICAL INSTRUCTION: You MUST output all content in ENGLISH. Do not use Vietnamese or any other language."
+        )
+        
+        user_prompt = f"### UI COMPONENTS DETAIL (EXTRACTED BY VISION AI):\n{ui_analysis_json}\n\n"
+        if business_rules_context and business_rules_context.strip() != "":
+            user_prompt += f"### MANDATORY BUSINESS RULES (RETRIEVED FROM PDF VIA RAG):\n{business_rules_context}\n\n"
+        else:
+            user_prompt += "### BUSINESS RULES: No specific regulation provided. Complete freedom to infer standard templates.\n\n"
+            
+        user_prompt += (
+            "Decompose this limited data into a professional comprehensive Software Requirements Specification document. "
+            "Ensure you fill out every section of the required IEEE structure. "
+            "For non-functional requirements and business rules, automatically append standard domain knowledge if missing."
+        )
+        
+        result = self.call_llm_stream(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            pydantic_schema=SRSDocument,
+            stream_callback=stream_callback
+        )
+        
+        return result
+
     def refine_requirements(self, previous_srs_json: str, qa_feedback: str, ui_analysis_json: str) -> SRSDocument:
         """
         Vòng lặp tự sửa (Self-Refinement Loop).

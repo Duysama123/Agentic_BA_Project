@@ -35,6 +35,10 @@ class Config:
     
     # Khác
     LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG")
+    
+    # Cấu hình tối ưu hóa chống Rate Limit trên Free Tier
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_STREAMING = os.getenv("GEMINI_STREAMING", "true").lower() in ("true", "1", "yes")
 
 config = Config()
 

@@ -199,7 +199,14 @@ TRANSLATIONS = {
             "2. (Layer 1 Guardrail): Đối với sơ đồ Flowchart, TUYỆT ĐỐI KHÔNG sử dụng các ký tự ngoặc đơn `()`, ngoặc vuông `[]`, ngoặc nhọn `{}` CŨNG NHƯ nháy kép `\"` BÊN TRONG CÁC NHÃN (Labels) của Node Text hoặc mũi tên.\n"
             "   - SAI: A[Đăng nhập (Khách hàng)] -->|Nhấn `Ok`| B\n"
             "   - ĐÚNG: A[Dang nhap Khach hang] -->|Nhan Ok| B\n"
-            "3. Text bên trong các Node CHỈ ĐƯỢC CHỨA chữ cái và khoảng trắng để đảm bảo 100% không đụng độ cú pháp Mermaid."
+            "3. QUAN TRỌNG: Node ID (phần ID đứng ngoài ngoặc) TUYỆT ĐỐI CHỈ DÙNG CHỮ CÁI TIẾNG ANH VÀ SỐ (Alphanumeric), KHÔNG DÙNG TIẾNG VIỆT CÓ DẤU, KHÔNG DÙNG KHOẢNG TRẮNG.\n"
+            "   - Flowchart SAI: BắtĐầu[Bắt Đầu] --> ĐăngNhập[Đăng nhập]\n"
+            "   - Flowchart ĐÚNG: Start[Bắt Đầu] --> Login[Đăng nhập]\n"
+            "4. Đối với Sequence Diagram, PHẢI định nghĩa participant/actor bằng alias tiếng Anh KHÔNG DẤU, KHÔNG KHOẢNG TRẮNG trước khi dùng.\n"
+            "   - SAI: Khách Hàng->>Hệ Thống: Đăng nhập\n"
+            "   - ĐÚNG: participant User as Khách Hàng\n"
+            "           participant Sys as Hệ Thống\n"
+            "           User->>Sys: Đăng nhập"
         ),
         "en": (
             "You are a Technical Writer / System Architect specialized in drawing system diagrams using Mermaid.js code.\n"
@@ -211,7 +218,14 @@ TRANSLATIONS = {
             "2. (Layer 1 Guardrail): For the Flowchart, STRICTLY DO NOT use parentheses `()`, brackets `[]`, braces `{}`, or double quotes `\"` INSIDE Node Labels or arrow labels.\n"
             "   - WRONG: A[Login (Customer)] -->|Click `OK`| B\n"
             "   - CORRECT: A[Login Customer] -->|Click OK| B\n"
-            "3. Text inside Flowchart nodes MUST ONLY contain alphanumeric characters and spaces to ensure 100% Mermaid syntax compatibility."
+            "3. IMPORTANT: Node IDs MUST BE STRICTLY ALPHANUMERIC (No spaces, no special characters, no accents).\n"
+            "   - Flowchart WRONG: Log In[Log In]\n"
+            "   - Flowchart CORRECT: Login[Log In]\n"
+            "4. For Sequence Diagrams, MUST define participants/actors with strict alphanumeric aliases before using them.\n"
+            "   - WRONG: Customer A->>System: Login\n"
+            "   - CORRECT: participant Cust as Customer A\n"
+            "              participant Sys as System\n"
+            "              Cust->>Sys: Login"
         ),
     },
     "prompt_da_system": {
@@ -271,7 +285,7 @@ TRANSLATIONS = {
 # ============================================================
 
 def get_lang() -> str:
-    return st.session_state.get("app_language", "vi")
+    return st.session_state.get("app_language", "en")
 
 def t(key: str, **kwargs) -> str:
     lang = get_lang()

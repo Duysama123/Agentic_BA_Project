@@ -98,6 +98,11 @@ class VisionAgent(BaseAgent):
             raise FileNotFoundError(f"Vision Agent cannot access image at: {image_path}")
 
         img = Image.open(image_path)
+        
+        # Layer 1 Token Saving: Resize image to max 1024x1024 to save Vision Tokens
+        # This reduces the number of tokens Gemini charges for image input significantly.
+        img.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
+
 
         # ── STAGE 1: YOLO Local Detection ──────────────────────────
         yolo_result = run_yolo_detection(image_path)

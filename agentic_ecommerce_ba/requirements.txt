@@ -27,3 +27,13 @@ uvicorn>=0.27.0
 # Database & Export
 supabase>=2.3.0
 fpdf2>=2.7.7
+docxtpl>=0.20.2
+docx2pdf>=0.1.8; sys_platform == "win32"
+pywin32>=311; sys_platform == "win32"
+
+# Automatically detected missing dependencies
+requests>=2.31.0
+colorama>=0.4.6
+pandas>=2.1.0,<3.0.0
+google-generativeai>=0.3.0
+torchvision
