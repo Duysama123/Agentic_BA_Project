@@ -379,6 +379,11 @@ def main():
         st.markdown("### Specify.ai")
         st.caption(st.session_state.user.email)
         
+        if st.button("Sign Out", use_container_width=True):
+            st.session_state.db.logout()
+            st.session_state.user = None
+            st.rerun()
+            
         st.markdown("---")
         
         if st.button("+ New Project", type="primary", use_container_width=True):
@@ -397,64 +402,64 @@ def main():
             if not projects:
                 st.caption("No projects yet.")
             else:
-                # Wrap history in a scrollable container to ensure Sign Out is always visible
-                with st.container(height=350, border=False):
-                    for p in projects:
-                        btn_name = f"{p['name']} ({p['created_at'][:10]})"
-                        if st.button(btn_name, use_container_width=True, key=f"hist_{p['id']}"):
-                            details = st.session_state.db.get_project_details(p['id'])
-                            if details:
-                                if details['image_base64']:
-                                    st.session_state.image_bytes = base64.b64decode(details['image_base64'])
-                                st.session_state.image_name = details['name']
-                                st.session_state.user_notes = details['user_notes']
-                                
-                                st.session_state.cache_vision = dict_to_obj(details.get('vision_data'))
-                                st.session_state.cache_ba = dict_to_obj(details.get('ba_data'))
-                                st.session_state.cache_diagram = dict_to_obj(details.get('diagram_data'))
-                                qa_raw = details.get('qa_data', {})
-                                if qa_raw and isinstance(qa_raw, dict) and '_step_timings' in qa_raw:
-                                    st.session_state.step_timings = qa_raw.pop('_step_timings')
-                                else:
-                                    st.session_state.step_timings = {}
-                                st.session_state.cache_qa = dict_to_obj(qa_raw)
-                                st.session_state.cache_testcase = dict_to_obj(details.get('testcase_data', details.get('da_data'))) # Use testcase_data (fallback to da_data if not renamed yet)
-                                
-                                st.session_state.pipeline_state = 'COMPLETED'
-                                st.session_state.active_project_id = p['id']
-                                st.rerun()
+                project_options = {f"{p['name']} ({p['created_at'][:10]})": p for p in projects}
+                
+                selected_proj_name = st.selectbox(
+                    "Select a project", 
+                    options=["-- Select a past project --"] + list(project_options.keys()),
+                    label_visibility="collapsed"
+                )
+                
+                if selected_proj_name != "-- Select a past project --":
+                    if st.button("Load Project", use_container_width=True):
+                        p = project_options[selected_proj_name]
+                        details = st.session_state.db.get_project_details(p['id'])
+                        if details:
+                            if details['image_base64']:
+                                st.session_state.image_bytes = base64.b64decode(details['image_base64'])
+                            st.session_state.image_name = details['name']
+                            st.session_state.user_notes = details['user_notes']
+                            
+                            st.session_state.cache_vision = dict_to_obj(details.get('vision_data'))
+                            st.session_state.cache_ba = dict_to_obj(details.get('ba_data'))
+                            st.session_state.cache_diagram = dict_to_obj(details.get('diagram_data'))
+                            qa_raw = details.get('qa_data', {})
+                            if qa_raw and isinstance(qa_raw, dict) and '_step_timings' in qa_raw:
+                                st.session_state.step_timings = qa_raw.pop('_step_timings')
+                            else:
+                                st.session_state.step_timings = {}
+                            st.session_state.cache_qa = dict_to_obj(qa_raw)
+                            st.session_state.cache_testcase = dict_to_obj(details.get('testcase_data', details.get('da_data'))) # Use testcase_data (fallback to da_data if not renamed yet)
+                            
+                            st.session_state.pipeline_state = 'COMPLETED'
+                            st.session_state.active_project_id = p['id']
+                            st.rerun()
         except Exception as e:
             st.error(f"Failed to load history: {e}")
         
-        # Custom API Key Input
+        # Custom API Key Input inside an expander to save space
         st.markdown("---")
-        custom_key = st.text_input(
-            "🔑 Custom Gemini Key (Optional)", 
-            type="password", 
-            help="Enter your personal Gemini API Key from Google AI Studio to avoid shared quota rate limits."
-        )
-        if custom_key:
-            os.environ["GEMINI_API_KEY"] = custom_key.strip()
-            if "GEMINI_API_KEYS" in os.environ:
-                del os.environ["GEMINI_API_KEYS"]
-            st.caption("🟢 Using your custom API key.")
-        else:
-            os.environ["GEMINI_API_KEY"] = st.session_state.orig_gemini_api_key
-            if st.session_state.orig_gemini_api_keys:
-                os.environ["GEMINI_API_KEYS"] = st.session_state.orig_gemini_api_keys
-            elif "GEMINI_API_KEYS" in os.environ:
-                del os.environ["GEMINI_API_KEYS"]
-            if os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEYS"):
-                st.caption("🔵 Using shared default API keys.")
+        with st.expander("API Key Configuration"):
+            custom_key = st.text_input(
+                "Custom Gemini Key (Optional)", 
+                type="password", 
+                help="Enter your personal Gemini API Key from Google AI Studio to avoid shared quota rate limits."
+            )
+            if custom_key:
+                os.environ["GEMINI_API_KEY"] = custom_key.strip()
+                if "GEMINI_API_KEYS" in os.environ:
+                    del os.environ["GEMINI_API_KEYS"]
+                st.caption("Status: Using your custom API key.")
             else:
-                st.caption("🔴 No API key set! Please enter a key.")
-
-        # Sign Out
-        st.markdown("---")
-        if st.button("Sign Out", use_container_width=True):
-            st.session_state.db.logout()
-            st.session_state.user = None
-            st.rerun()
+                os.environ["GEMINI_API_KEY"] = st.session_state.orig_gemini_api_key
+                if st.session_state.orig_gemini_api_keys:
+                    os.environ["GEMINI_API_KEYS"] = st.session_state.orig_gemini_api_keys
+                elif "GEMINI_API_KEYS" in os.environ:
+                    del os.environ["GEMINI_API_KEYS"]
+                if os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEYS"):
+                    st.caption("Status: Using shared default API keys.")
+                else:
+                    st.caption("Status: No API key set! Please enter a key.")
 
     # Header
     st.markdown("<h1 class='hero-title'>Specify.ai</h1>", unsafe_allow_html=True)
