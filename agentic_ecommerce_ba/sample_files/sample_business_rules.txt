@@ -1,0 +1,12 @@
+# Sample Business Rules - E-Commerce System
+
+## 1. Product Search Rules
+- Users must be able to search products by name, category, or tags.
+- The system must display search suggestions after the user types 3 characters.
+- Search results must support sorting by relevance, price (low to high, high to low), and creation date.
+
+## 2. Shopping Cart & Checkout Rules
+- Guests can add items to the cart, but must log in to proceed to checkout.
+- If the cart value exceeds , apply a 10% automatic discount.
+- The system must check product inventory availability in real-time when the user changes item quantity in the cart.
+- Order confirmation email must be sent automatically within 5 minutes of successful payment.

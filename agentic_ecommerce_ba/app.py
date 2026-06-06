@@ -641,7 +641,7 @@ def main():
                 c1, c2 = st.columns(2)
                 
                 # Check if local sample files exist
-                sample_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "data", "sample_files"))
+                sample_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "sample_files"))
                 wf1_path = os.path.join(sample_dir, "sample_wireframe_1.png")
                 wf2_path = os.path.join(sample_dir, "sample_wireframe_2.png")
                 rules_path = os.path.join(sample_dir, "sample_business_rules.txt")
