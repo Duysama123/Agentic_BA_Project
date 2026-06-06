@@ -639,11 +639,50 @@ def main():
             # Sample wireframes package for public testers
             with st.expander("💡 Don't have a wireframe or business rules PDF? Test with these samples:"):
                 c1, c2 = st.columns(2)
+                
+                # Check if local sample files exist
+                sample_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "data", "sample_files"))
+                wf1_path = os.path.join(sample_dir, "sample_wireframe_1.png")
+                wf2_path = os.path.join(sample_dir, "sample_wireframe_2.png")
+                rules_path = os.path.join(sample_dir, "sample_business_rules.txt")
+                
                 with c1:
-                    st.markdown("[📥 Download Sample Wireframe 1](https://raw.githubusercontent.com/microsoft/ai-lab/master/Sketch2Code/Model/sample_images/1.png) (Search Page)")
-                    st.markdown("[📥 Download Sample Wireframe 2](https://raw.githubusercontent.com/microsoft/ai-lab/master/Sketch2Code/Model/sample_images/2.png) (Product List Page)")
+                    st.markdown("**Sample Wireframes:**")
+                    if os.path.exists(wf1_path):
+                        with open(wf1_path, "rb") as f:
+                            wf1_bytes = f.read()
+                        st.download_button(
+                            "📥 Download Wireframe 1 (Search)",
+                            wf1_bytes,
+                            file_name="sample_wireframe_1.png",
+                            mime="image/png",
+                            use_container_width=True,
+                            key="dl_wf1"
+                        )
+                    if os.path.exists(wf2_path):
+                        with open(wf2_path, "rb") as f:
+                            wf2_bytes = f.read()
+                        st.download_button(
+                            "📥 Download Wireframe 2 (Product List)",
+                            wf2_bytes,
+                            file_name="sample_wireframe_2.png",
+                            mime="image/png",
+                            use_container_width=True,
+                            key="dl_wf2"
+                        )
                 with c2:
-                    st.markdown("[📥 Download Sample Business Rules (PDF)](https://raw.githubusercontent.com/microsoft/ai-lab/master/Sketch2Code/README.md) (Markdown readme, save as text/PDF to upload)")
+                    st.markdown("**Sample Business Rules:**")
+                    if os.path.exists(rules_path):
+                        with open(rules_path, "r", encoding="utf-8") as f:
+                            rules_content = f.read()
+                        st.download_button(
+                            "📥 Download Rules (TXT)",
+                            rules_content,
+                            file_name="sample_business_rules.txt",
+                            mime="text/plain",
+                            use_container_width=True,
+                            key="dl_rules"
+                        )
             
             is_disabled = (uploaded_image is None) or (project_name == "")
 
