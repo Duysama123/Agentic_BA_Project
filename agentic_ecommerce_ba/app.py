@@ -164,6 +164,27 @@ def main():
         margin: 1.5rem 0;
     }
     
+    /* Style Selectbox to fit dark theme and not look blurry/white */
+    [data-testid="stSelectbox"] > div[data-baseweb="select"] > div {
+        background-color: #1F2937 !important;
+        border: 1px solid #374151 !important;
+        color: #FFFFFF !important;
+    }
+    
+    /* Restore Red Sign Out Button */
+    [data-testid="stSidebar"] .stButton:last-of-type > button {
+        background-color: #dc2626 !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        font-weight: 600 !important;
+        text-align: center !important;
+        display: flex !important;
+        justify-content: center !important;
+    }
+    [data-testid="stSidebar"] .stButton:last-of-type > button:hover {
+        background-color: #b91c1c !important;
+    }
+    
     /* Menu Item Buttons (Secondary) */
     [data-testid="stSidebar"] .stButton > button[kind="secondary"] {
         background-color: transparent !important;
@@ -386,15 +407,25 @@ def main():
     if 'pipeline_start_time' not in st.session_state:
         st.session_state.pipeline_start_time = None
 
-    # Sidebar - Modern CodingLab-style
+    # Sidebar - Modern CodingLab-style with Selectbox and Avatar
     with st.sidebar:
-        # Brand
-        st.markdown("### Specify.ai")
-        st.caption(st.session_state.user.email)
+        user_email = st.session_state.user.email
+        initial = user_email[0].upper() if user_email else "U"
         
-        st.markdown("---")
+        # User Avatar Profile Header
+        st.markdown(f"""
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem; margin-top: 0.5rem;">
+            <div style="width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 18px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); flex-shrink: 0;">
+                {initial}
+            </div>
+            <div style="overflow: hidden;">
+                <div style="font-weight: 700; font-size: 1.1rem; color: #F3F4F6; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Specify.ai</div>
+                <div style="font-size: 0.8rem; color: #9CA3AF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{user_email}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
-        if st.button("➕ New Project", type="primary", use_container_width=True):
+        if st.button("+ New Project", type="primary", use_container_width=True):
             st.session_state.pipeline_state = 'IDLE'
             for key in ['cache_vision', 'cache_ba', 'cache_diagram', 'cache_qa', 'cache_testcase']:
                 st.session_state[key] = None
@@ -403,44 +434,51 @@ def main():
             st.session_state.pipeline_start_time = None
             st.rerun()
         
-        st.markdown("### 📂 PROJECT HISTORY")
+        st.markdown("### PROJECT HISTORY")
             
         try:
             projects = st.session_state.db.get_projects(st.session_state.user.id)
             if not projects:
                 st.caption("No projects yet.")
             else:
-                with st.container(height=350, border=False):
-                    for p in projects:
-                        btn_name = f"📄 {p['name'][:25]}" # Truncate long names slightly
-                        if st.button(btn_name, use_container_width=True, key=f"hist_{p['id']}"):
-                            details = st.session_state.db.get_project_details(p['id'])
-                            if details:
-                                if details['image_base64']:
-                                    st.session_state.image_bytes = base64.b64decode(details['image_base64'])
-                                st.session_state.image_name = details['name']
-                                st.session_state.user_notes = details['user_notes']
-                                
-                                st.session_state.cache_vision = dict_to_obj(details.get('vision_data'))
-                                st.session_state.cache_ba = dict_to_obj(details.get('ba_data'))
-                                st.session_state.cache_diagram = dict_to_obj(details.get('diagram_data'))
-                                qa_raw = details.get('qa_data', {})
-                                if qa_raw and isinstance(qa_raw, dict) and '_step_timings' in qa_raw:
-                                    st.session_state.step_timings = qa_raw.pop('_step_timings')
-                                else:
-                                    st.session_state.step_timings = {}
-                                st.session_state.cache_qa = dict_to_obj(qa_raw)
-                                st.session_state.cache_testcase = dict_to_obj(details.get('testcase_data', details.get('da_data')))
-                                
-                                st.session_state.pipeline_state = 'COMPLETED'
-                                st.session_state.active_project_id = p['id']
-                                st.rerun()
+                project_options = {f"{p['name']} ({p['created_at'][:10]})": p for p in projects}
+                
+                selected_proj_name = st.selectbox(
+                    "Select a project", 
+                    options=["-- Select a past project --"] + list(project_options.keys()),
+                    label_visibility="collapsed"
+                )
+                
+                if selected_proj_name != "-- Select a past project --":
+                    if st.button("Load Project", use_container_width=True):
+                        p = project_options[selected_proj_name]
+                        details = st.session_state.db.get_project_details(p['id'])
+                        if details:
+                            if details['image_base64']:
+                                st.session_state.image_bytes = base64.b64decode(details['image_base64'])
+                            st.session_state.image_name = details['name']
+                            st.session_state.user_notes = details['user_notes']
+                            
+                            st.session_state.cache_vision = dict_to_obj(details.get('vision_data'))
+                            st.session_state.cache_ba = dict_to_obj(details.get('ba_data'))
+                            st.session_state.cache_diagram = dict_to_obj(details.get('diagram_data'))
+                            qa_raw = details.get('qa_data', {})
+                            if qa_raw and isinstance(qa_raw, dict) and '_step_timings' in qa_raw:
+                                st.session_state.step_timings = qa_raw.pop('_step_timings')
+                            else:
+                                st.session_state.step_timings = {}
+                            st.session_state.cache_qa = dict_to_obj(qa_raw)
+                            st.session_state.cache_testcase = dict_to_obj(details.get('testcase_data', details.get('da_data')))
+                            
+                            st.session_state.pipeline_state = 'COMPLETED'
+                            st.session_state.active_project_id = p['id']
+                            st.rerun()
         except Exception as e:
             st.error(f"Failed to load history: {e}")
         
         st.markdown("---")
         
-        with st.expander("⚙️ Settings"):
+        with st.expander("API Key Configuration"):
             custom_key = st.text_input(
                 "Gemini API Key (Optional)", 
                 type="password", 
@@ -463,7 +501,7 @@ def main():
                     st.caption("No API key set!")
 
         # Logout button
-        if st.button("🚪 Logout", use_container_width=True):
+        if st.button("Sign Out", use_container_width=True):
             st.session_state.db.logout()
             st.session_state.user = None
             st.rerun()
