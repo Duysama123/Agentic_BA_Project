@@ -513,7 +513,7 @@ def main():
     st.markdown("<p class='hero-subtitle'>The Agentic Systems Architect</p>", unsafe_allow_html=True)
     
     # Evaluation Survey Banner
-    st.info("💡 **Help us evaluate this system!** If you are testing our app, please help by filling out this [2-minute Feedback Survey](https://forms.gle/your_google_form_link) after reviewing the output. Thank you!")
+    st.info("💡 **Help us evaluate this system!** If you are testing our app, please help by filling out this [2-minute Feedback Survey](https://forms.gle/35YmQcNYv9Jum54UA) after reviewing the output. Thank you!")
 
     
     # -------------------------------------------------------
