@@ -1406,6 +1406,37 @@ def main():
                         st.markdown("---")
                         st.info(f"💡 **AI Explanation:** {explanation}")
                     
+                    # QA Agent Feedback display
+                    if st.session_state.cache_qa:
+                        qa = st.session_state.cache_qa
+                        with st.expander("✅ QA Agent Feedback (Auto-approved)", expanded=False):
+                            struct_checks = getattr(qa, 'structural_checks', [])
+                            struct_err = sum(1 for c in struct_checks if getattr(c, 'type', '') == 'error')
+                            
+                            consist_checks = getattr(qa, 'consistency_checks', [])
+                            consist_warn = sum(1 for c in consist_checks if getattr(c, 'type', '') == 'warning')
+                            
+                            domain_checks = getattr(qa, 'domain_checks', [])
+                            failed_domain = sum(1 for c in domain_checks if not getattr(c, 'passed', False))
+                            
+                            c1, c2, c3 = st.columns(3)
+                            c1.metric("Structural Errors", f"{struct_err}")
+                            c2.metric("Consistency Warnings", f"{consist_warn}")
+                            c3.metric("Failed Domain Checks", f"{failed_domain}")
+                            
+                            decision = getattr(qa, 'decision', None)
+                            d_reason = getattr(decision, 'reason', 'No issues found. Diagram is robust and aligns with business rules.') if decision else 'No issues found.'
+                            st.success(f"**QA Decision:** {d_reason}")
+                            
+                            if len(domain_checks) > 0:
+                                st.markdown("#### Domain Checklist")
+                                for c in domain_checks:
+                                    c_id = getattr(c, 'id', '')
+                                    c_msg = getattr(c, 'message', '')
+                                    c_pass = getattr(c, 'passed', False)
+                                    icon = "✅" if c_pass else "❌"
+                                    st.markdown(f"{icon} **{c_id}**: {c_msg}")
+
                     # Regenerate button
                     st.markdown("<br>", unsafe_allow_html=True)
                     if st.button("🔄 Regenerate Diagrams", use_container_width=True):
