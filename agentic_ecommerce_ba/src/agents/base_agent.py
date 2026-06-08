@@ -73,7 +73,7 @@ class BaseAgent:
         models_to_try = [self.model_name]
         
         # Extended fallback chain to handle 503 high demand
-        fallback_chain = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-flash-latest"]
+        fallback_chain = ["gemini-2.5-flash", "gemini-2.0-flash"]
         for f in fallback_chain:
             if f not in models_to_try:
                 models_to_try.append(f)
@@ -82,7 +82,8 @@ class BaseAgent:
         last_error = None
         
         for model_idx, current_model in enumerate(models_to_try):
-            max_retries = max(len(_api_keys), 2)
+            keys = Config.get_api_keys()
+            max_retries = max(len(keys), 2)
             
             if model_idx > 0:
                 logger.warning(f"[{self.role_name}] 🔄 Model {models_to_try[model_idx-1]} quá tải! Chuyển sang dự phòng: {current_model}")
@@ -190,7 +191,7 @@ class BaseAgent:
         models_to_try = [self.model_name]
         
         # Extended fallback chain to handle 503 high demand
-        fallback_chain = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-flash-latest"]
+        fallback_chain = ["gemini-2.5-flash", "gemini-2.0-flash"]
         for f in fallback_chain:
             if f not in models_to_try:
                 models_to_try.append(f)
@@ -199,7 +200,8 @@ class BaseAgent:
         last_error = None
         
         for model_idx, current_model in enumerate(models_to_try):
-            max_retries = max(len(_api_keys), 2)
+            keys = Config.get_api_keys()
+            max_retries = max(len(keys), 2)
             
             if model_idx > 0:
                 logger.warning(f"[{self.role_name}] 🔄 Streaming fallback to: {current_model}")

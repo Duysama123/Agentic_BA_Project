@@ -115,7 +115,7 @@ class DatabaseManager:
         if 'access_token' in st.session_state:
             del st.session_state.access_token
 
-    def save_project(self, user_id, project_name, image_bytes, vision_json, ba_json, diagram_json, qa_json, testcase_json=None):
+    def save_project(self, user_id, project_name, image_bytes, vision_json, ba_json, diagram_json, qa_json):
         if not self.connected: raise Exception("Missing Supabase Keys")
         
         image_base64 = ""
@@ -129,7 +129,6 @@ class DatabaseManager:
             "vision_data": json.loads(vision_json) if vision_json else {},
             "ba_data": json.loads(ba_json) if ba_json else {},
             "diagram_data": json.loads(diagram_json) if diagram_json else {},
-            "testcase_data": json.loads(testcase_json) if testcase_json else {},
             "qa_data": json.loads(qa_json) if qa_json else {}
         }
         

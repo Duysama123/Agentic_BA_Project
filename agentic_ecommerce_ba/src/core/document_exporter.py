@@ -2,10 +2,10 @@ import os
 import json
 from docxtpl import DocxTemplate
 
-def generate_srs_docx(ba_data_json: str, template_path: str, output_path: str, diagram_data_json: str = None, testcase_data_json: str = None) -> str:
+def generate_srs_docx(ba_data_json: str, template_path: str, output_path: str, diagram_data_json: str = None) -> str:
     """
     Load data from BA Agent into the IEEE DOCX template.
-    If diagram_data_json or testcase_data_json is provided, appends to the DOCX.
+    If diagram_data_json is provided, appends to the DOCX.
     Returns the path to the generated DOCX.
     """
     data = json.loads(ba_data_json)
@@ -91,12 +91,12 @@ def generate_srs_docx(ba_data_json: str, template_path: str, output_path: str, d
             pass
             
     # Append extras if available and not included in template
-    if (diagram_data_json or testcase_data_json) and append_at_end:
-        append_extras_to_docx(output_path, diagram_data_json, testcase_data_json)
+    if diagram_data_json and append_at_end:
+        append_extras_to_docx(output_path, diagram_data_json)
         
     return output_path
 
-def append_extras_to_docx(docx_path: str, diagram_data_json: str = None, testcase_data_json: str = None):
+def append_extras_to_docx(docx_path: str, diagram_data_json: str = None):
     import base64
     import zlib
     import requests
@@ -156,36 +156,6 @@ def append_extras_to_docx(docx_path: str, diagram_data_json: str = None, testcas
             if explanation:
                 doc.add_heading('Diagram Explanation', level=2)
                 doc.add_paragraph(explanation)
-
-        if testcase_data_json:
-            tc_data = json.loads(testcase_data_json)
-            test_cases = tc_data.get("test_cases", [])
-            if test_cases:
-                doc.add_page_break()
-                doc.add_heading('System Test Cases (Auto-Generated)', level=1)
-                for tc in test_cases:
-                    tc_id = tc.get("test_id", "TC")
-                    tc_scen = tc.get("scenario", "Scenario")
-                    doc.add_heading(f"[{tc.get('priority', 'Medium')} Priority] {tc_id} - {tc_scen}", level=2)
-                    doc.add_paragraph(f"Test Type: {tc.get('test_type', 'Functional')}")
-                    doc.add_paragraph(f"Precondition: {tc.get('precondition', 'None')}")
-                    
-                    steps = tc.get("steps", [])
-                    if steps:
-                        doc.add_paragraph("Steps:")
-                        for s in steps:
-                            doc.add_paragraph(f"  {s.get('step_number', '')}. {s.get('action', '')} -> {s.get('expected_result', '')}")
-                            
-                    doc.add_paragraph(f"Final Expected Result: {tc.get('final_expected_result', 'None')}")
-                    
-                    auto_hint = tc.get("automation_hint", "")
-                    if auto_hint:
-                        doc.add_paragraph(f"Automation Hint: {auto_hint}")
-                    
-                    bdd = tc.get("bdd_gherkin", "")
-                    if bdd:
-                        doc.add_paragraph("BDD Gherkin Format:")
-                        doc.add_paragraph(bdd)
 
         doc.save(docx_path)
     except Exception as e:

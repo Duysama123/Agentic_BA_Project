@@ -86,7 +86,8 @@ class VisionAgent(BaseAgent):
     """
 
     def __init__(self):
-        super().__init__(role_name="Vision Agent", model_name="gemini-2.5-flash")
+        super().__init__(role_name="Vision Agent", model_name="gemini-2.0-flash")
+
 
     def analyze_wireframe(self, image_path: str, user_notes: str = "") -> WireframeAnalysis:
         """

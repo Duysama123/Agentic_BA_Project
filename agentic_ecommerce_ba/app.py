@@ -10,7 +10,7 @@ import base64
 import streamlit.components.v1 as components
 
 def render_mermaid(code: str):
-    """Render Mermaid diagram using Mermaid JS in HTML component."""
+    """Render Mermaid diagram using Kroki API for reliable rendering."""
     if not code or not code.strip():
         st.warning("No diagram code available.")
         return
@@ -25,44 +25,19 @@ def render_mermaid(code: str):
     clean = clean.strip()
     
     import base64
-    code_b64 = base64.b64encode(clean.encode('utf-8')).decode('utf-8')
-    
-    html = f"""
-    <div id="mermaid-render" class="mermaid"></div>
-    <div id="error-container" style="color: #dc2626; background-color: #fee2e2; padding: 12px; border: 1px solid #fecaca; border-radius: 4px; font-family: monospace; white-space: pre-wrap; display: none;"></div>
-    
-    <script type="module">
-        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    import zlib
+    try:
+        compressed = zlib.compress(clean.encode('utf-8'), 9)
+        encoded = base64.urlsafe_b64encode(compressed).decode('ascii')
+        # Use SVG for crisp rendering
+        url = f"https://kroki.io/mermaid/svg/{encoded}"
+        st.image(url, use_container_width=True)
         
-        const errorContainer = document.getElementById('error-container');
-        const renderContainer = document.getElementById('mermaid-render');
-        
-        try {{
-            const binString = atob("{code_b64}");
-            const uint8Array = Uint8Array.from(binString, (m) => m.codePointAt(0));
-            const cleanCode = new TextDecoder().decode(uint8Array);
-            
-            renderContainer.textContent = cleanCode;
-            
-            mermaid.initialize({{ 
-                startOnLoad: false, 
-                theme: 'default',
-                securityLevel: 'loose',
-                suppressErrorAlerts: true
-            }});
-            
-            await mermaid.run({{
-                nodes: [renderContainer]
-            }});
-        }} catch (err) {{
-            console.error("Mermaid Render Error:", err);
-            errorContainer.style.display = 'block';
-            errorContainer.textContent = 'Mermaid Rendering Error: ' + err.message;
-            renderContainer.style.display = 'none';
-        }}
-    </script>
-    """
-    components.html(html, height=700, scrolling=True)
+        with st.expander("Show Mermaid Code"):
+            st.code(clean, language="mermaid")
+    except Exception as e:
+        st.error(f"Failed to render diagram: {e}")
+        st.code(clean, language="mermaid")
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -70,7 +45,6 @@ from src.agents.vision_agent import VisionAgent
 from src.agents.ba_agent import BAAgent
 from src.agents.diagram_agent import DiagramAgent
 from src.agents.qa_agent import QAAgent
-from src.agents.testcase_agent import TestCaseAgent
 from src.rag_engine.chunker import extract_text_from_pdf, sliding_window_chunking
 from src.rag_engine.vector_store import RAGVectorStore
 from src.core.i18n import t, init_language_selector
@@ -385,7 +359,6 @@ def main():
     if 'ba_agent' not in st.session_state: st.session_state.ba_agent = BAAgent()
     if 'diagram_agent' not in st.session_state: st.session_state.diagram_agent = DiagramAgent()
     if 'qa_agent' not in st.session_state: st.session_state.qa_agent = QAAgent()
-    if 'testcase_agent' not in st.session_state: st.session_state.testcase_agent = TestCaseAgent()
     if 'vector_store' not in st.session_state: st.session_state.vector_store = RAGVectorStore()
         
     # State Management
@@ -400,7 +373,7 @@ def main():
     if 'active_project_id' not in st.session_state: st.session_state.active_project_id = None
     if 'rag_context' not in st.session_state: st.session_state.rag_context = ""
     
-    for key in ['cache_vision', 'cache_ba', 'cache_diagram', 'cache_qa', 'cache_testcase']:
+    for key in ['cache_vision', 'cache_ba', 'cache_diagram', 'cache_qa']:
         if key not in st.session_state: st.session_state[key] = None
     
     # Pipeline timing tracker
@@ -429,7 +402,7 @@ def main():
         
         if st.button("+ New Project", type="primary", use_container_width=True):
             st.session_state.pipeline_state = 'IDLE'
-            for key in ['cache_vision', 'cache_ba', 'cache_diagram', 'cache_qa', 'cache_testcase']:
+            for key in ['cache_vision', 'cache_ba', 'cache_diagram', 'cache_qa']:
                 st.session_state[key] = None
             st.session_state.active_project_id = None
             st.session_state.step_timings = {}
@@ -470,7 +443,6 @@ def main():
                             else:
                                 st.session_state.step_timings = {}
                             st.session_state.cache_qa = dict_to_obj(qa_raw)
-                            st.session_state.cache_testcase = dict_to_obj(details.get('testcase_data', details.get('da_data')))
                             
                             st.session_state.pipeline_state = 'COMPLETED'
                             st.session_state.active_project_id = p['id']
@@ -625,15 +597,47 @@ def main():
         with col_center:
             # Compact 2-column layout to prevent scrolling
             col_left, col_right = st.columns(2)
-            
             with col_left:
                 project_name = st.text_input("Project Name (Required)", placeholder="E.g., Inventory Management System")
                 uploaded_image = st.file_uploader("Upload UI Mockup/Wireframe", type=["jpg", "jpeg", "png"])
+                
+                # Load qualitative templates selection
+                template_options = [
+                    "Upload custom wireframe",
+                    "Template 1: User Profile Form (sample11.png)",
+                    "Template 2: Payment Portal (sample2.jpg)",
+                    "Template 3: Checkout Summary (sample3.jpg)"
+                ]
+                selected_template = st.selectbox("Or select a pre-loaded hand-drawn template:", template_options)
                 
             with col_right:
                 user_notes = st.text_area("Master Directives (Optional)", placeholder="E.g., Require Stripe integration...", height=68)
                 uploaded_pdf = st.file_uploader("Business Rules Context (PDF)", type=["pdf"])
             
+            # Resolve image source (file upload vs template selection)
+            active_image_bytes = None
+            active_image_name = project_name
+            
+            sample_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "sample_files"))
+            qual_dir = os.path.join(sample_dir, "qualitative_test")
+            
+            if selected_template == "Upload custom wireframe":
+                if uploaded_image:
+                    active_image_bytes = uploaded_image.getvalue()
+            else:
+                template_map = {
+                    "Template 1: User Profile Form (sample11.png)": ("sample11.png", "User Profile Registration"),
+                    "Template 2: Payment Portal (sample2.jpg)": ("sample2.jpg", "Payment Portal Screen"),
+                    "Template 3: Checkout Summary (sample3.jpg)": ("sample3.jpg", "Checkout Order Summary")
+                }
+                fname, default_pname = template_map[selected_template]
+                path = os.path.join(qual_dir, fname)
+                if os.path.exists(path):
+                    with open(path, "rb") as f:
+                        active_image_bytes = f.read()
+                    if not active_image_name:
+                        active_image_name = default_pname
+
             st.markdown("<br>", unsafe_allow_html=True)
             
             # Sample wireframes package for public testers
@@ -641,7 +645,6 @@ def main():
                 c1, c2 = st.columns(2)
                 
                 # Check if local sample files exist
-                sample_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "sample_files"))
                 wf1_path = os.path.join(sample_dir, "sample_wireframe_1.png")
                 wf2_path = os.path.join(sample_dir, "sample_wireframe_2.png")
                 rules_path = os.path.join(sample_dir, "sample_business_rules.txt")
@@ -684,18 +687,18 @@ def main():
                             key="dl_rules"
                         )
             
-            is_disabled = (uploaded_image is None) or (project_name == "")
-
+            is_disabled = (active_image_bytes is None) or (active_image_name == "")
+ 
             if st.button("START BUSINESS ANALYSIS", type="primary", use_container_width=True, disabled=is_disabled):
-                st.session_state.image_bytes = uploaded_image.getvalue()
-                st.session_state.image_name = project_name
+                st.session_state.image_bytes = active_image_bytes
+                st.session_state.image_name = active_image_name
                 st.session_state.user_notes = user_notes
                 if uploaded_pdf:
                     st.session_state.pdf_bytes = uploaded_pdf.getvalue()
                 else:
                     st.session_state.pdf_bytes = None
                 
-                for key in ['cache_vision', 'cache_ba', 'cache_diagram', 'cache_qa', 'cache_testcase']:
+                for key in ['cache_vision', 'cache_ba', 'cache_diagram', 'cache_qa']:
                     st.session_state[key] = None
                 if 'eval_session_id' not in st.session_state or st.session_state.eval_session_id is None:
                     try:
@@ -1036,9 +1039,9 @@ def main():
             if 'diagrams_start' not in st.session_state.step_timings:
                 st.session_state.step_timings['diagrams_start'] = _time.time()
             
-            render_pipeline_progress('PROCESSING_DIAGRAMS', "Generating diagrams, running QA audit, and creating Test Cases...")
+            render_pipeline_progress('PROCESSING_DIAGRAMS', "Generating diagrams and running QA audit...")
             
-            with st.status("Generating Diagrams, Test Cases, and running QA...", expanded=True) as status_box:
+            with st.status("Generating Diagrams and running QA...", expanded=True) as status_box:
                 pipeline_error = False
                 error_message = ""
                 
@@ -1053,15 +1056,6 @@ def main():
                             meta = getattr(st.session_state.diagram_agent, 'last_run_metadata', {"time": 0, "tokens": 0})
                             out_j = st.session_state.cache_diagram.model_dump() if hasattr(st.session_state.cache_diagram, 'model_dump') else {}
                             st.session_state.db.log_agent_run(st.session_state.get('eval_session_id'), "DiagramAgent", st.session_state.get('qa_retry_count', 0) + 1, {"ba": ba_j}, out_j, meta['time'], meta['tokens'], "success")
-                        except Exception: pass
-                    
-                    if st.session_state.cache_testcase is None:
-                        st.write("[TestCaseAgent] Deriving Test Cases from SRS...")
-                        st.session_state.cache_testcase = st.session_state.testcase_agent.generate_test_cases(ba_j)
-                        try:
-                            meta = getattr(st.session_state.testcase_agent, 'last_run_metadata', {"time": 0, "tokens": 0})
-                            out_j = st.session_state.cache_testcase.model_dump() if hasattr(st.session_state.cache_testcase, 'model_dump') else {}
-                            st.session_state.db.log_agent_run(st.session_state.get('eval_session_id'), "TestCaseAgent", st.session_state.get('qa_retry_count', 0) + 1, {"ba": ba_j}, out_j, meta['time'], meta['tokens'], "success")
                         except Exception: pass
                     
                     if st.session_state.cache_qa is None:
@@ -1102,7 +1096,6 @@ def main():
                     st.warning(f"QA Agent detected issues. Auto-retrying ({st.session_state.qa_retry_count}/3)...")
                     time.sleep(2)
                     st.session_state.cache_diagram = None
-                    st.session_state.cache_testcase = None
                     st.session_state.cache_qa = None
                     st.rerun()
                 else:
@@ -1116,7 +1109,6 @@ def main():
                     try:
                         st.write("[DBAgent] Persisting artifacts to cloud storage...")
                         diag_j = st.session_state.cache_diagram.model_dump_json() if hasattr(st.session_state.cache_diagram, 'model_dump_json') else json.dumps(st.session_state.cache_diagram.__dict__, separators=(',', ':'))
-                        tc_j = st.session_state.cache_testcase.model_dump_json() if hasattr(st.session_state.cache_testcase, 'model_dump_json') else json.dumps(st.session_state.cache_testcase.__dict__, separators=(',', ':')) if st.session_state.cache_testcase else None
                         
                         qa_dict = json.loads(qa_j) if qa_j else {}
                         qa_dict['_step_timings'] = st.session_state.get('step_timings', {})
@@ -1124,7 +1116,7 @@ def main():
                         
                         resp = st.session_state.db.save_project(
                             st.session_state.user.id, st.session_state.image_name, 
-                            st.session_state.image_bytes, vision_j, ba_j, diag_j, qa_j_with_timings, tc_j
+                            st.session_state.image_bytes, vision_j, ba_j, diag_j, qa_j_with_timings
                         )
                         if getattr(resp, 'data', None) and len(resp.data) > 0:
                             st.session_state.active_project_id = resp.data[0]['id']
@@ -1296,7 +1288,6 @@ def main():
                 st.session_state.db.log_human_review(st.session_state.get('eval_session_id'), "HITL-3", "reject", {}, {}, spent)
                 st.session_state.qa_retry_count = 0
                 st.session_state.cache_diagram = None
-                st.session_state.cache_testcase = None
                 st.session_state.cache_qa = None
                 if reviewer_notes:
                     st.session_state.user_notes += f"\n[QA Feedback]: {reviewer_notes}"
@@ -1311,7 +1302,6 @@ def main():
                     ba_j = st.session_state.cache_ba.model_dump_json() if hasattr(st.session_state.cache_ba, 'model_dump_json') else json.dumps(st.session_state.cache_ba.__dict__)
                     diag_j = st.session_state.cache_diagram.model_dump_json() if hasattr(st.session_state.cache_diagram, 'model_dump_json') else json.dumps(st.session_state.cache_diagram.__dict__)
                     qa_j = st.session_state.cache_qa.model_dump_json() if hasattr(st.session_state.cache_qa, 'model_dump_json') else json.dumps(st.session_state.cache_qa.__dict__)
-                    tc_j = st.session_state.cache_testcase.model_dump_json() if hasattr(st.session_state.cache_testcase, 'model_dump_json') else json.dumps(st.session_state.cache_testcase.__dict__) if st.session_state.cache_testcase else None
                     
                     qa_dict = json.loads(qa_j) if qa_j else {}
                     qa_dict['_step_timings'] = st.session_state.get('step_timings', {})
@@ -1320,7 +1310,7 @@ def main():
                     try:
                         resp = st.session_state.db.save_project(
                             st.session_state.user.id, st.session_state.image_name, 
-                            st.session_state.image_bytes, vision_j, ba_j, diag_j, qa_j_with_timings, tc_j
+                            st.session_state.image_bytes, vision_j, ba_j, diag_j, qa_j_with_timings
                         )
                         if getattr(resp, 'data', None) and len(resp.data) > 0:
                             st.session_state.active_project_id = resp.data[0]['id']
@@ -1352,7 +1342,6 @@ def main():
                 st.session_state.cache_vision = None
                 st.session_state.cache_ba = None
                 st.session_state.cache_diagram = None
-                st.session_state.cache_testcase = None
                 st.session_state.cache_qa = None
                 st.rerun()
     # ========================================================
@@ -1367,7 +1356,7 @@ def main():
             
             # ---- CACHED DOCUMENT EXPORT ----
             @st.cache_data(show_spinner=False, ttl=3600)
-            def generate_cached_docs(_ba_j, _diag_j, _tc_j):
+            def generate_cached_docs(_ba_j, _diag_j):
                 from src.core.document_exporter import generate_srs_docx, convert_docx_to_pdf
                 import tempfile, os, traceback
                 out_dir = tempfile.mkdtemp()
@@ -1377,7 +1366,7 @@ def main():
                 
                 try:
                     if os.path.exists(template_path):
-                        generate_srs_docx(_ba_j, template_path, docx_path, _diag_j, _tc_j)
+                        generate_srs_docx(_ba_j, template_path, docx_path, _diag_j)
                         
                         with open(docx_path, "rb") as f:
                             docx_bytes = f.read()
@@ -1394,7 +1383,7 @@ def main():
                     return None, None, f"{e}\n{traceback.format_exc()}"
             
             # Tabbed results view
-            tab_export, tab_diagrams, tab_testcases, tab_summary = st.tabs(["📄 SRS Export", "🧩 Diagrams", "🧪 Test Cases", "📊 Pipeline Summary"])
+            tab_export, tab_diagrams, tab_summary = st.tabs(["📄 SRS Export", "🧩 Diagrams", "📊 Pipeline Summary"])
             
             # ---- TAB 1: SRS Export ----
             with tab_export:
@@ -1406,11 +1395,7 @@ def main():
                     if hasattr(st.session_state, 'cache_diagram') and st.session_state.cache_diagram:
                         diag_j = st.session_state.cache_diagram.model_dump_json() if hasattr(st.session_state.cache_diagram, 'model_dump_json') else json.dumps(st.session_state.cache_diagram.__dict__)
 
-                    tc_j = None
-                    if hasattr(st.session_state, 'cache_testcase') and st.session_state.cache_testcase:
-                        tc_j = st.session_state.cache_testcase.model_dump_json() if hasattr(st.session_state.cache_testcase, 'model_dump_json') else json.dumps(st.session_state.cache_testcase.__dict__)
-                    
-                    docx_bytes, pdf_bytes, err = generate_cached_docs(ba_j, diag_j, tc_j)
+                    docx_bytes, pdf_bytes, err = generate_cached_docs(ba_j, diag_j)
                     
                     if err:
                         st.error(f"Error generating document: {err}")
@@ -1471,43 +1456,12 @@ def main():
                     st.markdown("<br>", unsafe_allow_html=True)
                     if st.button("🔄 Regenerate Diagrams", use_container_width=True):
                         st.session_state.cache_diagram = None
-                        st.session_state.cache_testcase = None
                         st.session_state.cache_qa = None
                         st.session_state.pipeline_state = 'PROCESSING_DIAGRAMS'
                         st.rerun()
                 else:
                     st.warning("No diagram data available.")
-            
-            # ---- TAB 3: Test Cases ----
-            with tab_testcases:
-                st.markdown("### Derived Test Cases")
-                testcases = st.session_state.cache_testcase
-                if testcases and hasattr(testcases, 'test_cases'):
-                    tc_list = testcases.test_cases
-                    st.success(f"Generated {len(tc_list)} test cases derived from the SRS.")
-                    for tc in tc_list:
-                        with st.expander(f"[{getattr(tc, 'priority', 'Medium')} Priority] {getattr(tc, 'test_id', 'TC')} - {getattr(tc, 'scenario', 'Scenario')}"):
-                            st.markdown(f"**Test Type:** {getattr(tc, 'test_type', 'Functional')}")
-                            st.markdown(f"**Precondition:** {getattr(tc, 'precondition', 'None')}")
-                            
-                            steps = getattr(tc, 'steps', [])
-                            if steps:
-                                st.markdown("**Steps:**")
-                                for s in steps:
-                                    st.markdown(f"{getattr(s, 'step_number', '')}. {getattr(s, 'action', '')} ➔ *{getattr(s, 'expected_result', '')}*")
-                            
-                            st.markdown(f"**Final Expected Result:** {getattr(tc, 'final_expected_result', 'None')}")
-                            
-                            auto_hint = getattr(tc, 'automation_hint', '')
-                            if auto_hint:
-                                st.info(f"🤖 **Automation Hint:** `{auto_hint}`")
-                                
-                            bdd = getattr(tc, 'bdd_gherkin', '')
-                            if bdd:
-                                st.markdown("**BDD Gherkin Format:**")
-                                st.code(bdd, language="gherkin")
-                else:
-                    st.warning("No test case data available.")
+                        
 
             # ---- TAB 4: Pipeline Summary ----
             with tab_summary:
