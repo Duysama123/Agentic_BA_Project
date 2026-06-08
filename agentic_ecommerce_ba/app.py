@@ -1058,39 +1058,13 @@ def main():
                     st.session_state.pipeline_state = 'HITL_QA'
                     st.rerun()
             else:
-                # Capture diagrams step timing before saving to DB
+                # Capture diagrams step timing before going to HITL_QA
                 diag_start = st.session_state.step_timings.get('diagrams_start', _time.time())
                 st.session_state.step_timings['diagrams'] = round(_time.time() - diag_start, 2)
                 st.session_state.step_timings['diagrams_subtitle'] = "Diagram + QA completed - approved"
-
-                # Save to DB
-                if st.session_state.active_project_id is None:
-                    try:
-                        st.write("[DBAgent] Persisting artifacts to cloud storage...")
-                        diag_j = st.session_state.cache_diagram.model_dump_json() if hasattr(st.session_state.cache_diagram, 'model_dump_json') else json.dumps(st.session_state.cache_diagram.__dict__, separators=(',', ':'))
-                        
-                        qa_dict = json.loads(qa_j) if qa_j else {}
-                        qa_dict['_step_timings'] = st.session_state.get('step_timings', {})
-                        qa_j_with_timings = json.dumps(qa_dict, separators=(',', ':'))
-                        
-                        resp = st.session_state.db.save_project(
-                            st.session_state.user.id, st.session_state.image_name, 
-                            st.session_state.image_bytes, vision_j, ba_j, diag_j, qa_j_with_timings
-                        )
-                        if isinstance(resp, list) and len(resp) > 0:
-                            st.session_state.active_project_id = resp[0]['id']
-                    except Exception as db_e:
-                        st.error(f"Database error: {db_e}")
-                time.sleep(1)
-                try:
-                    if st.session_state.get('eval_session_id'):
-                        tot_time = round(_time.time() - st.session_state.get('eval_session_start_time', _time.time()), 2)
-                        st.session_state.db.update_eval_session(st.session_state.eval_session_id, tot_time, "approved")
-                        diag_j = st.session_state.cache_diagram.model_dump_json() if hasattr(st.session_state.cache_diagram, 'model_dump_json') else '{}'
-                        st.session_state.db.save_generated_document(st.session_state.eval_session_id, 1, ba_j, diag_j, '{}', qa_j)
-                except Exception: pass
                 
-                st.session_state.pipeline_state = 'COMPLETED'
+                time.sleep(1)
+                st.session_state.pipeline_state = 'HITL_QA'
                 st.rerun()
 
     # ========================================================
@@ -1248,7 +1222,8 @@ def main():
                 st.session_state.pipeline_state = 'PROCESSING_DIAGRAMS'
                 st.rerun()
         with col2:
-            if st.button("✅ Override & approve", type="primary", use_container_width=True):
+            btn_text = "✅ Approve & Finish" if d_action == 'approve' else "✅ Override & approve"
+            if st.button(btn_text, type="primary", use_container_width=True):
                 spent = round(_time.time() - st.session_state.hitl_start_time, 2)
                 st.session_state.db.log_human_review(st.session_state.get('eval_session_id'), "HITL-3", "approve", {}, {}, spent)
                 if st.session_state.active_project_id is None:
