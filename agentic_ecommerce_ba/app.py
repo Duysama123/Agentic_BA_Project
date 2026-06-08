@@ -517,7 +517,7 @@ def main():
         ("hitl1", "HITL-1 — Vision Review", "HITL_VISION"),
         ("ba", "BA Agent", "PROCESSING_BA"),
         ("hitl2", "HITL-2 — SRS Review", "HITL_BA"),
-        ("diagrams", "Diagram · QA · Test Case Agents", "PROCESSING_DIAGRAMS"),
+        ("diagrams", "Diagram & QA Agents", "PROCESSING_DIAGRAMS"),
     ]
     TOTAL_STEPS = len(PIPELINE_STEPS)
     
