@@ -627,8 +627,8 @@ def main():
             else:
                 template_map = {
                     "Template 1: User Profile Form (sample11.png)": ("sample11.png", "User Profile Registration"),
-                    "Template 2: Payment Portal (sample2.jpg)": ("sample2.jpg", "Payment Portal Screen"),
-                    "Template 3: Checkout Summary (sample3.jpg)": ("sample3.jpg", "Checkout Order Summary")
+                    "Template 2: Payment Portal (sample2.png)": ("sample2.png", "Payment Portal Screen"),
+                    "Template 3: Checkout Summary (sample3.png)": ("sample3.png", "Checkout Order Summary")
                 }
                 fname, default_pname = template_map[selected_template]
                 path = os.path.join(qual_dir, fname)
