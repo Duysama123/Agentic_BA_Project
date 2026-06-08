@@ -1058,6 +1058,11 @@ def main():
                     st.session_state.pipeline_state = 'HITL_QA'
                     st.rerun()
             else:
+                # Capture diagrams step timing before saving to DB
+                diag_start = st.session_state.step_timings.get('diagrams_start', _time.time())
+                st.session_state.step_timings['diagrams'] = round(_time.time() - diag_start, 2)
+                st.session_state.step_timings['diagrams_subtitle'] = "Diagram + QA completed - approved"
+
                 # Save to DB
                 if st.session_state.active_project_id is None:
                     try:
@@ -1072,8 +1077,8 @@ def main():
                             st.session_state.user.id, st.session_state.image_name, 
                             st.session_state.image_bytes, vision_j, ba_j, diag_j, qa_j_with_timings
                         )
-                        if getattr(resp, 'data', None) and len(resp.data) > 0:
-                            st.session_state.active_project_id = resp.data[0]['id']
+                        if isinstance(resp, list) and len(resp) > 0:
+                            st.session_state.active_project_id = resp[0]['id']
                     except Exception as db_e:
                         st.error(f"Database error: {db_e}")
                 time.sleep(1)
@@ -1084,11 +1089,6 @@ def main():
                         diag_j = st.session_state.cache_diagram.model_dump_json() if hasattr(st.session_state.cache_diagram, 'model_dump_json') else '{}'
                         st.session_state.db.save_generated_document(st.session_state.eval_session_id, 1, ba_j, diag_j, '{}', qa_j)
                 except Exception: pass
-                
-                # Capture diagrams step timing
-                diag_start = st.session_state.step_timings.get('diagrams_start', _time.time())
-                st.session_state.step_timings['diagrams'] = round(_time.time() - diag_start, 2)
-                st.session_state.step_timings['diagrams_subtitle'] = "Diagram + QA completed — approved"
                 
                 st.session_state.pipeline_state = 'COMPLETED'
                 st.rerun()
@@ -1266,8 +1266,8 @@ def main():
                             st.session_state.user.id, st.session_state.image_name, 
                             st.session_state.image_bytes, vision_j, ba_j, diag_j, qa_j_with_timings
                         )
-                        if getattr(resp, 'data', None) and len(resp.data) > 0:
-                            st.session_state.active_project_id = resp.data[0]['id']
+                        if isinstance(resp, list) and len(resp) > 0:
+                            st.session_state.active_project_id = resp[0]['id']
                     except Exception:
                         pass
                 
