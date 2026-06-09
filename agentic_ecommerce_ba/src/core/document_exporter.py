@@ -56,7 +56,7 @@ def generate_srs_docx(ba_data_json: str, template_path: str, output_path: str, d
             fc_code = diag_data.get("flowchart_diagram", "")
             if fc_code and 'flowchart_image' in template_vars:
                 try:
-                    r = requests.get(get_kroki_url(fc_code), timeout=15)
+                    r = requests.get(get_kroki_url(fc_code), timeout=3)
                     if r.status_code == 200:
                         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
                         tmp.write(r.content)
@@ -69,7 +69,7 @@ def generate_srs_docx(ba_data_json: str, template_path: str, output_path: str, d
             seq_code = diag_data.get("sequence_diagram", "")
             if seq_code and 'sequence_image' in template_vars:
                 try:
-                    r = requests.get(get_kroki_url(seq_code), timeout=15)
+                    r = requests.get(get_kroki_url(seq_code), timeout=3)
                     if r.status_code == 200:
                         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
                         tmp.write(r.content)

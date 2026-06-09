@@ -10,7 +10,7 @@ import base64
 import streamlit.components.v1 as components
 
 def render_mermaid(code: str):
-    """Render Mermaid diagram using Kroki API for reliable rendering."""
+    """Render Mermaid diagram using Kroki API for reliable client-side rendering."""
     if not code or not code.strip():
         st.warning("No diagram code available.")
         return
@@ -29,9 +29,15 @@ def render_mermaid(code: str):
     try:
         compressed = zlib.compress(clean.encode('utf-8'), 9)
         encoded = base64.urlsafe_b64encode(compressed).decode('ascii')
-        # Use SVG for crisp rendering
         url = f"https://kroki.io/mermaid/svg/{encoded}"
-        st.image(url, use_container_width=True)
+        
+        # Use HTML img tag directly to prevent Streamlit backend from making server-side HTTP calls
+        st.markdown(
+            f'<div style="background-color: white; padding: 15px; border-radius: 8px; display: flex; justify-content: center; border: 1px solid #e5e7eb;">'
+            f'  <img src="{url}" style="max-width: 100%; height: auto; display: block; margin: 0 auto;"/>'
+            f'</div>', 
+            unsafe_allow_html=True
+        )
         
         with st.expander("Show Mermaid Code"):
             st.code(clean, language="mermaid")
