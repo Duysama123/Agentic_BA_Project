@@ -267,13 +267,23 @@ class DatabaseManager:
             print(f"Error logging human review on Supabase: {e}")
 
     def save_generated_document(self, session_id, version_number, srs_json, diagrams_mermaid, erd_sql, qa_checklist_result):
+        # Parse JSON strings to dicts for jsonb compatibility
+        srs_data = json.loads(srs_json) if isinstance(srs_json, str) else srs_json
+        qa_data = json.loads(qa_checklist_result) if isinstance(qa_checklist_result, str) else qa_checklist_result
+        
+        diag_data = diagrams_mermaid
+        if isinstance(diagrams_mermaid, str):
+            try:
+                diag_data = json.loads(diagrams_mermaid)
+            except Exception:
+                diag_data = {"mermaid": diagrams_mermaid}
+
         data = {
             "session_id": session_id,
             "version_number": version_number,
-            "srs_json": srs_json if srs_json else {},
-            "diagrams_mermaid": {"mermaid": diagrams_mermaid} if isinstance(diagrams_mermaid, str) else diagrams_mermaid,
-            "erd_sql": {"sql": erd_sql} if isinstance(erd_sql, str) else erd_sql,
-            "qa_checklist_result": qa_checklist_result if qa_checklist_result else {}
+            "srs_json": srs_data if srs_data else {},
+            "diagrams_mermaid": diag_data if diag_data else {},
+            "qa_checklist_result": qa_data if qa_data else {}
         }
         # Log to local CSV and JSONL
         self._log_to_local_csv("eval_generated_documents.csv", data)
@@ -284,7 +294,9 @@ class DatabaseManager:
             
         endpoint = f"{self.url}/rest/v1/eval_generated_documents"
         try:
-            requests.post(endpoint, headers=self._headers(st.session_state.get('access_token')), json=data)
+            res = requests.post(endpoint, headers=self._headers(st.session_state.get('access_token')), json=data)
+            if res.status_code not in [200, 201]:
+                print(f"Failed to save generated document on Supabase: {res.status_code} - {res.text}")
         except Exception as e:
             print(f"Error saving generated document on Supabase: {e}")
 
