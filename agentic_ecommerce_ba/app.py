@@ -605,8 +605,8 @@ def main():
                 template_options = [
                     "Upload custom wireframe",
                     "Template 1: User Profile Form (sample11.png)",
-                    "Template 2: Payment Portal (sample2.jpg)",
-                    "Template 3: Checkout Summary (sample3.jpg)"
+                    "Template 2: Payment Portal (sample2.png)",
+                    "Template 3: Checkout Summary (sample3.png)"
                 ]
                 selected_template = st.selectbox("Or select a pre-loaded hand-drawn template:", template_options)
                 
