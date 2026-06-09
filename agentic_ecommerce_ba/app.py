@@ -10,7 +10,7 @@ import base64
 import streamlit.components.v1 as components
 
 def render_mermaid(code: str):
-    """Render Mermaid diagram using Kroki API for reliable client-side rendering."""
+    """Render Mermaid diagram using client-side Mermaid.js — no external API needed."""
     if not code or not code.strip():
         st.warning("No diagram code available.")
         return
@@ -24,26 +24,39 @@ def render_mermaid(code: str):
         clean = clean[:-3]
     clean = clean.strip()
     
-    import base64
-    import zlib
-    try:
-        compressed = zlib.compress(clean.encode('utf-8'), 9)
-        encoded = base64.urlsafe_b64encode(compressed).decode('ascii')
-        url = f"https://kroki.io/mermaid/svg/{encoded}"
-        
-        # Use HTML img tag directly to prevent Streamlit backend from making server-side HTTP calls
-        st.markdown(
-            f'<div style="background-color: white; padding: 15px; border-radius: 8px; display: flex; justify-content: center; border: 1px solid #e5e7eb;">'
-            f'  <img src="{url}" style="max-width: 100%; height: auto; display: block; margin: 0 auto;"/>'
-            f'</div>', 
-            unsafe_allow_html=True
-        )
-        
-        with st.expander("Show Mermaid Code"):
-            st.code(clean, language="mermaid")
-    except Exception as e:
-        st.error(f"Failed to render diagram: {e}")
-        st.code(clean, language="mermaid")
+    import html as html_module
+    escaped = html_module.escape(clean)
+    
+    html_template = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+        <style>
+            body { margin: 0; background: white; }
+            #mermaid-container {
+                background-color: white;
+                padding: 16px;
+                display: flex;
+                justify-content: center;
+            }
+            .mermaid { font-family: 'Segoe UI', Arial, sans-serif; }
+            .mermaid svg { max-width: 100%; height: auto; }
+        </style>
+    </head>
+    <body>
+        <div id="mermaid-container">
+            <pre class="mermaid">MERMAID_PLACEHOLDER</pre>
+        </div>
+        <script>
+            mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+        </script>
+    </body>
+    </html>
+    """
+    html_content = html_template.replace("MERMAID_PLACEHOLDER", escaped)
+    
+    components.html(html_content, height=520, scrolling=True)
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -1572,64 +1585,59 @@ def main():
                 st.markdown("### Export Final Documents")
                 ba_j = safe_model_dump_json(st.session_state.cache_ba)
                 
+                # Auto-generate on first load, cache in session_state for instant subsequent renders
                 if st.session_state.export_docx_bytes is None and st.session_state.export_error is None:
-                    st.info("📄 Generating IEEE standard documents (DOCX and PDF) requires rendering and compiling diagrams. Click the button below to compile documents.")
-                    if st.button("⚙️ Generate Export Documents (DOCX & PDF)", type="primary", use_container_width=True):
-                        with st.spinner("Generating IEEE Standard Documents..."):
-                            diag_j = None
-                            if hasattr(st.session_state, 'cache_diagram') and st.session_state.cache_diagram:
-                                diag_j = safe_model_dump_json(st.session_state.cache_diagram)
+                    with st.spinner("Generating IEEE Standard Documents..."):
+                        diag_j = None
+                        if hasattr(st.session_state, 'cache_diagram') and st.session_state.cache_diagram:
+                            diag_j = safe_model_dump_json(st.session_state.cache_diagram)
 
-                            vision_j = None
-                            if hasattr(st.session_state, 'cache_vision') and st.session_state.cache_vision:
-                                vision_j = safe_model_dump_json(st.session_state.cache_vision)
+                        vision_j = None
+                        if hasattr(st.session_state, 'cache_vision') and st.session_state.cache_vision:
+                            vision_j = safe_model_dump_json(st.session_state.cache_vision)
 
-                            docx_bytes, pdf_bytes, err = generate_cached_docs(ba_j, diag_j, vision_j, st.session_state.image_bytes)
-                            st.session_state.export_docx_bytes = docx_bytes
-                            st.session_state.export_pdf_bytes = pdf_bytes
-                            st.session_state.export_error = err
-                            st.rerun()
-                else:
-                    if st.session_state.export_error:
-                        st.error(f"Error generating document: {st.session_state.export_error}")
-                        if st.button("🔄 Retry Document Generation", use_container_width=True):
-                            st.session_state.export_docx_bytes = None
-                            st.session_state.export_pdf_bytes = None
-                            st.session_state.export_error = None
-                            st.rerun()
-                    else:
-                        docx_bytes = st.session_state.export_docx_bytes
-                        pdf_bytes = st.session_state.export_pdf_bytes
-                        
-                        col1, col2 = st.columns(2)
-                        with col1:
+                        docx_bytes, pdf_bytes, err = generate_cached_docs(ba_j, diag_j, vision_j, st.session_state.image_bytes)
+                        st.session_state.export_docx_bytes = docx_bytes
+                        st.session_state.export_pdf_bytes = pdf_bytes
+                        st.session_state.export_error = err
+                
+                if st.session_state.export_error:
+                    st.error(f"Error generating document: {st.session_state.export_error}")
+                    if st.button("🔄 Retry Document Generation", use_container_width=True):
+                        st.session_state.export_docx_bytes = None
+                        st.session_state.export_pdf_bytes = None
+                        st.session_state.export_error = None
+                        st.rerun()
+                elif st.session_state.export_docx_bytes:
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.download_button(
+                            "📝 Download IEEE SRS (DOCX)", 
+                            st.session_state.export_docx_bytes, 
+                            file_name="IEEE_SRS.docx", 
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", 
+                            type="primary",
+                            use_container_width=True
+                        )
+                    with col2:
+                        if st.session_state.export_pdf_bytes:
                             st.download_button(
-                                "📝 Download IEEE SRS (DOCX)", 
-                                docx_bytes, 
-                                file_name="IEEE_SRS.docx", 
-                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", 
+                                "📄 Download PDF", 
+                                st.session_state.export_pdf_bytes, 
+                                file_name="IEEE_SRS.pdf", 
+                                mime="application/pdf", 
                                 type="primary",
                                 use_container_width=True
                             )
-                        with col2:
-                            if pdf_bytes:
-                                st.download_button(
-                                    "📄 Download PDF", 
-                                    pdf_bytes, 
-                                    file_name="IEEE_SRS.pdf", 
-                                    mime="application/pdf", 
-                                    type="primary",
-                                    use_container_width=True
-                                )
-                            else:
-                                st.info("PDF Generation not supported on this OS without Word/LibreOffice.")
-                        
-                        st.markdown("<br>", unsafe_allow_html=True)
-                        if st.button("🔄 Regenerate Documents", use_container_width=True):
-                            st.session_state.export_docx_bytes = None
-                            st.session_state.export_pdf_bytes = None
-                            st.session_state.export_error = None
-                            st.rerun()
+                        else:
+                            st.info("PDF Generation not supported on this OS without Word/LibreOffice.")
+                    
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    if st.button("🔄 Regenerate Documents", use_container_width=True):
+                        st.session_state.export_docx_bytes = None
+                        st.session_state.export_pdf_bytes = None
+                        st.session_state.export_error = None
+                        st.rerun()
             
             # ---- TAB 2: Diagrams ----
             with tab_diagrams:
