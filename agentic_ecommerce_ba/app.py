@@ -147,10 +147,20 @@ def extract_diagram_details(diagram):
     if not flowchart_code and not sequence_code:
         mermaid_val = getattr(diagram, 'mermaid', '')
         if mermaid_val:
-            if isinstance(mermaid_val, str) and "sequenceDiagram" in mermaid_val:
-                sequence_code = mermaid_val
+            if isinstance(mermaid_val, str):
+                mermaid_val_stripped = mermaid_val.strip()
+                if mermaid_val_stripped.startswith('{') and mermaid_val_stripped.endswith('}'):
+                    try:
+                        parsed = json.loads(mermaid_val_stripped)
+                        return extract_diagram_details(dict_to_obj(parsed))
+                    except Exception:
+                        pass
+                if "sequenceDiagram" in mermaid_val_stripped:
+                    sequence_code = mermaid_val_stripped
+                else:
+                    flowchart_code = mermaid_val_stripped
             else:
-                flowchart_code = mermaid_val
+                return extract_diagram_details(mermaid_val)
                 
     # Normalize types
     if not isinstance(flowchart_code, str):
