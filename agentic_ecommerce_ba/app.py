@@ -1227,11 +1227,12 @@ def main():
             if st.button(btn_text, type="primary", use_container_width=True):
                 spent = round(_time.time() - st.session_state.hitl_start_time, 2)
                 st.session_state.db.log_human_review(st.session_state.get('eval_session_id'), "HITL-3", "approve", {}, {}, spent)
+                vision_j = st.session_state.cache_vision.model_dump_json() if hasattr(st.session_state.cache_vision, 'model_dump_json') else json.dumps(st.session_state.cache_vision.__dict__)
+                ba_j = st.session_state.cache_ba.model_dump_json() if hasattr(st.session_state.cache_ba, 'model_dump_json') else json.dumps(st.session_state.cache_ba.__dict__)
+                diag_j = st.session_state.cache_diagram.model_dump_json() if hasattr(st.session_state.cache_diagram, 'model_dump_json') else json.dumps(st.session_state.cache_diagram.__dict__)
+                qa_j = st.session_state.cache_qa.model_dump_json() if hasattr(st.session_state.cache_qa, 'model_dump_json') else json.dumps(st.session_state.cache_qa.__dict__)
+
                 if st.session_state.active_project_id is None:
-                    vision_j = st.session_state.cache_vision.model_dump_json() if hasattr(st.session_state.cache_vision, 'model_dump_json') else json.dumps(st.session_state.cache_vision.__dict__)
-                    ba_j = st.session_state.cache_ba.model_dump_json() if hasattr(st.session_state.cache_ba, 'model_dump_json') else json.dumps(st.session_state.cache_ba.__dict__)
-                    diag_j = st.session_state.cache_diagram.model_dump_json() if hasattr(st.session_state.cache_diagram, 'model_dump_json') else json.dumps(st.session_state.cache_diagram.__dict__)
-                    qa_j = st.session_state.cache_qa.model_dump_json() if hasattr(st.session_state.cache_qa, 'model_dump_json') else json.dumps(st.session_state.cache_qa.__dict__)
                     
                     qa_dict = json.loads(qa_j) if qa_j else {}
                     qa_dict['_step_timings'] = st.session_state.get('step_timings', {})
