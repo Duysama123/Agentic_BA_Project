@@ -69,6 +69,114 @@ def dict_to_obj(d):
         return [dict_to_obj(i) for i in d]
     return d
 
+def safe_model_dump_json(obj):
+    if obj is None:
+        return "{}"
+    if isinstance(obj, str):
+        try:
+            json.loads(obj)
+            return obj
+        except Exception:
+            return json.dumps(obj)
+    if isinstance(obj, dict):
+        return json.dumps(obj, separators=(',', ':'))
+    if hasattr(obj, 'model_dump_json'):
+        return obj.model_dump_json()
+    if hasattr(obj, '__dict__'):
+        def default_serializer(o):
+            if hasattr(o, '__dict__'):
+                return o.__dict__
+            return str(o)
+        return json.dumps(obj.__dict__, default=default_serializer, separators=(',', ':'))
+    return json.dumps(obj, separators=(',', ':'))
+
+def safe_model_dump(obj):
+    if obj is None:
+        return {}
+    if isinstance(obj, str):
+        try:
+            return json.loads(obj)
+        except Exception:
+            return {"value": obj}
+    if isinstance(obj, dict):
+        return obj
+    if hasattr(obj, 'model_dump'):
+        return obj.model_dump()
+    if hasattr(obj, '__dict__'):
+        def default_serializer(o):
+            if hasattr(o, '__dict__'):
+                return o.__dict__
+            return str(o)
+        return json.loads(json.dumps(obj.__dict__, default=default_serializer))
+    return {}
+
+def extract_diagram_details(diagram):
+    """
+    Extracts flowchart_diagram, sequence_diagram, and diagram_explanation from diagram object.
+    Supports various legacy and standard formats, and handles type mismatches and placeholder values.
+    """
+    flowchart_code = ""
+    sequence_code = ""
+    explanation = ""
+    
+    if not diagram:
+        return flowchart_code, sequence_code, explanation
+        
+    if isinstance(diagram, str):
+        try:
+            parsed = json.loads(diagram)
+            return extract_diagram_details(dict_to_obj(parsed))
+        except Exception:
+            # Raw string fallback
+            diag_str = diagram.strip()
+            if "sequenceDiagram" in diag_str:
+                return "", diag_str, ""
+            else:
+                return diag_str, "", ""
+                
+    # If diagram is a dictionary
+    if isinstance(diagram, dict):
+        diagram = dict_to_obj(diagram)
+        
+    # MockSchema or other object
+    flowchart_code = getattr(diagram, 'flowchart_diagram', '')
+    sequence_code = getattr(diagram, 'sequence_diagram', '')
+    explanation = getattr(diagram, 'diagram_explanation', '')
+    
+    # Try alternate keys (e.g. legacy 'mermaid' key)
+    if not flowchart_code and not sequence_code:
+        mermaid_val = getattr(diagram, 'mermaid', '')
+        if mermaid_val:
+            if isinstance(mermaid_val, str) and "sequenceDiagram" in mermaid_val:
+                sequence_code = mermaid_val
+            else:
+                flowchart_code = mermaid_val
+                
+    # Normalize types
+    if not isinstance(flowchart_code, str):
+        flowchart_code = str(flowchart_code) if flowchart_code is not None else ""
+    if not isinstance(sequence_code, str):
+        sequence_code = str(sequence_code) if sequence_code is not None else ""
+    if not isinstance(explanation, str):
+        explanation = str(explanation) if explanation is not None else ""
+        
+    # Clean up string values
+    flowchart_code = flowchart_code.strip()
+    sequence_code = sequence_code.strip()
+    explanation = explanation.strip()
+    
+    # Check for placeholder values like "0", "null", "None", empty strings
+    if flowchart_code in ("0", "null", "None"):
+        flowchart_code = ""
+    if sequence_code in ("0", "null", "None"):
+        sequence_code = ""
+    if explanation in ("0", "null", "None"):
+        explanation = ""
+        
+    return flowchart_code, sequence_code, explanation
+
+
+
 def login_ui():
     st.markdown("<h1 class='hero-title'>Specify.ai</h1>", unsafe_allow_html=True)
     st.markdown("<h4 class='hero-subtitle'>Please authenticate to access your workspace.</h4>", unsafe_allow_html=True)
@@ -869,7 +977,7 @@ def main():
                 error_message = ""
                 
                 try:
-                    vision_j = st.session_state.cache_vision.model_dump_json() if hasattr(st.session_state.cache_vision, 'model_dump_json') else json.dumps(st.session_state.cache_vision.__dict__, separators=(',', ':'))
+                    vision_j = safe_model_dump_json(st.session_state.cache_vision)
                     rag_context = ""
                     
                     if st.session_state.pdf_bytes:
@@ -994,7 +1102,7 @@ def main():
             edited_reqs = []
             
             for i, fr_obj in enumerate(reqs):
-                fr = fr_obj if isinstance(fr_obj, dict) else (fr_obj.model_dump() if hasattr(fr_obj, 'model_dump') else fr_obj.__dict__)
+                fr = safe_model_dump(fr_obj)
                 st.markdown(f"**Use case: {fr.get('id')} — {fr.get('name')}**")
                 st.write(f"Actor: **{fr.get('actor')}**")
                 st.write(f"Description: **{fr.get('description')}**")
@@ -1067,8 +1175,8 @@ def main():
                 error_message = ""
                 
                 try:
-                    ba_j = st.session_state.cache_ba.model_dump_json() if hasattr(st.session_state.cache_ba, 'model_dump_json') else json.dumps(st.session_state.cache_ba.__dict__, separators=(',', ':'))
-                    vision_j = st.session_state.cache_vision.model_dump_json() if hasattr(st.session_state.cache_vision, 'model_dump_json') else json.dumps(st.session_state.cache_vision.__dict__, separators=(',', ':'))
+                    ba_j = safe_model_dump_json(st.session_state.cache_ba)
+                    vision_j = safe_model_dump_json(st.session_state.cache_vision)
                     
                     if st.session_state.cache_diagram is None:
                         st.write("[DiagramAgent] Generating Flowchart and Sequence Diagram...")
@@ -1101,7 +1209,7 @@ def main():
                                 meta.get('input_tokens', 0), meta.get('output_tokens', 0)
                             )
                         except Exception: pass
-                    qa_j = st.session_state.cache_qa.model_dump_json() if hasattr(st.session_state.cache_qa, 'model_dump_json') else json.dumps(st.session_state.cache_qa.__dict__, separators=(',', ':'))
+                    qa_j = safe_model_dump_json(st.session_state.cache_qa)
                     
                 except Exception as e:
                     pipeline_error = True
@@ -1145,10 +1253,10 @@ def main():
                     st.session_state.pipeline_state = 'HITL_QA'
                 else:
                     # Automated approval and project saving
-                    vision_j = st.session_state.cache_vision.model_dump_json() if hasattr(st.session_state.cache_vision, 'model_dump_json') else json.dumps(st.session_state.cache_vision.__dict__)
-                    ba_j = st.session_state.cache_ba.model_dump_json() if hasattr(st.session_state.cache_ba, 'model_dump_json') else json.dumps(st.session_state.cache_ba.__dict__)
-                    diag_j = st.session_state.cache_diagram.model_dump_json() if hasattr(st.session_state.cache_diagram, 'model_dump_json') else json.dumps(st.session_state.cache_diagram.__dict__)
-                    qa_j = st.session_state.cache_qa.model_dump_json() if hasattr(st.session_state.cache_qa, 'model_dump_json') else json.dumps(st.session_state.cache_qa.__dict__)
+                    vision_j = safe_model_dump_json(st.session_state.cache_vision)
+                    ba_j = safe_model_dump_json(st.session_state.cache_ba)
+                    diag_j = safe_model_dump_json(st.session_state.cache_diagram)
+                    qa_j = safe_model_dump_json(st.session_state.cache_qa)
 
                     # Log dummy human review for Gate 3
                     try:
@@ -1344,10 +1452,10 @@ def main():
             if st.button(btn_text, type="primary", use_container_width=True):
                 spent = round(_time.time() - st.session_state.hitl_start_time, 2)
                 st.session_state.db.log_human_review(st.session_state.get('eval_session_id'), "HITL-3", "approve", {}, {}, spent)
-                vision_j = st.session_state.cache_vision.model_dump_json() if hasattr(st.session_state.cache_vision, 'model_dump_json') else json.dumps(st.session_state.cache_vision.__dict__)
-                ba_j = st.session_state.cache_ba.model_dump_json() if hasattr(st.session_state.cache_ba, 'model_dump_json') else json.dumps(st.session_state.cache_ba.__dict__)
-                diag_j = st.session_state.cache_diagram.model_dump_json() if hasattr(st.session_state.cache_diagram, 'model_dump_json') else json.dumps(st.session_state.cache_diagram.__dict__)
-                qa_j = st.session_state.cache_qa.model_dump_json() if hasattr(st.session_state.cache_qa, 'model_dump_json') else json.dumps(st.session_state.cache_qa.__dict__)
+                vision_j = safe_model_dump_json(st.session_state.cache_vision)
+                ba_j = safe_model_dump_json(st.session_state.cache_ba)
+                diag_j = safe_model_dump_json(st.session_state.cache_diagram)
+                qa_j = safe_model_dump_json(st.session_state.cache_qa)
 
                 if st.session_state.active_project_id is None:
                     
@@ -1437,16 +1545,16 @@ def main():
             # ---- TAB 1: SRS Export ----
             with tab_export:
                 st.markdown("### Export Final Documents")
-                ba_j = st.session_state.cache_ba.model_dump_json() if hasattr(st.session_state.cache_ba, 'model_dump_json') else json.dumps(st.session_state.cache_ba.__dict__)
+                ba_j = safe_model_dump_json(st.session_state.cache_ba)
                 
                 with st.spinner("Generating IEEE Standard Documents..."):
                     diag_j = None
                     if hasattr(st.session_state, 'cache_diagram') and st.session_state.cache_diagram:
-                        diag_j = st.session_state.cache_diagram.model_dump_json() if hasattr(st.session_state.cache_diagram, 'model_dump_json') else json.dumps(st.session_state.cache_diagram.__dict__)
+                        diag_j = safe_model_dump_json(st.session_state.cache_diagram)
 
                     vision_j = None
                     if hasattr(st.session_state, 'cache_vision') and st.session_state.cache_vision:
-                        vision_j = st.session_state.cache_vision.model_dump_json() if hasattr(st.session_state.cache_vision, 'model_dump_json') else json.dumps(st.session_state.cache_vision.__dict__)
+                        vision_j = safe_model_dump_json(st.session_state.cache_vision)
 
                     docx_bytes, pdf_bytes, err = generate_cached_docs(ba_j, diag_j, vision_j, st.session_state.image_bytes)
                     
@@ -1480,9 +1588,7 @@ def main():
             with tab_diagrams:
                 diagram = st.session_state.cache_diagram
                 if diagram:
-                    flowchart_code = getattr(diagram, 'flowchart_diagram', '')
-                    sequence_code = getattr(diagram, 'sequence_diagram', '')
-                    explanation = getattr(diagram, 'diagram_explanation', '')
+                    flowchart_code, sequence_code, explanation = extract_diagram_details(diagram)
                     
                     st.markdown("### Flowchart — Functional Logic Flow")
                     if flowchart_code and flowchart_code.strip():
