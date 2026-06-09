@@ -703,7 +703,12 @@ def main():
                         
                         try:
                             out_j = st.session_state.cache_vision.model_dump() if hasattr(st.session_state.cache_vision, 'model_dump') else {}
-                            st.session_state.db.log_agent_run(st.session_state.get('eval_session_id'), "VisionAgent", 1, {}, out_j, meta['time'], meta['tokens'], "success")
+                            st.session_state.db.log_agent_run(
+                                st.session_state.get('eval_session_id'), 
+                                "VisionAgent", 1, {}, out_j, 
+                                meta['time'], meta['tokens'], "success",
+                                meta.get('input_tokens', 0), meta.get('output_tokens', 0)
+                            )
                         except Exception: pass
                 except Exception as e:
                     pipeline_error = True
@@ -897,7 +902,12 @@ def main():
                         
                         try:
                             out_j = st.session_state.cache_ba.model_dump() if hasattr(st.session_state.cache_ba, 'model_dump') else {}
-                            st.session_state.db.log_agent_run(st.session_state.get('eval_session_id'), "BAAgent", 1, {"vision": vision_j}, out_j, meta['time'], meta['tokens'], "success")
+                            st.session_state.db.log_agent_run(
+                                st.session_state.get('eval_session_id'), 
+                                "BAAgent", 1, {"vision": vision_j}, out_j, 
+                                meta['time'], meta['tokens'], "success",
+                                meta.get('input_tokens', 0), meta.get('output_tokens', 0)
+                            )
                         except Exception: pass
                 except Exception as e:
                     pipeline_error = True
@@ -1010,7 +1020,12 @@ def main():
                         try:
                             meta = getattr(st.session_state.diagram_agent, 'last_run_metadata', {"time": 0, "tokens": 0})
                             out_j = st.session_state.cache_diagram.model_dump() if hasattr(st.session_state.cache_diagram, 'model_dump') else {}
-                            st.session_state.db.log_agent_run(st.session_state.get('eval_session_id'), "DiagramAgent", st.session_state.get('qa_retry_count', 0) + 1, {"ba": ba_j}, out_j, meta['time'], meta['tokens'], "success")
+                            st.session_state.db.log_agent_run(
+                                st.session_state.get('eval_session_id'), 
+                                "DiagramAgent", st.session_state.get('qa_retry_count', 0) + 1, {"ba": ba_j}, out_j, 
+                                meta['time'], meta['tokens'], "success",
+                                meta.get('input_tokens', 0), meta.get('output_tokens', 0)
+                            )
                         except Exception: pass
                     
                     if st.session_state.cache_qa is None:
@@ -1023,7 +1038,12 @@ def main():
                             meta = getattr(st.session_state.qa_agent, 'last_run_metadata', {"time": 0, "tokens": 0})
                             out_j = st.session_state.cache_qa.model_dump() if hasattr(st.session_state.cache_qa, 'model_dump') else {}
                             status = "success" if getattr(st.session_state.cache_qa, 'is_approved', False) else ("escalated" if st.session_state.get('qa_retry_count',0) >= 2 else "retry")
-                            st.session_state.db.log_agent_run(st.session_state.get('eval_session_id'), "QAAgent", st.session_state.get('qa_retry_count', 0) + 1, {}, out_j, meta['time'], meta['tokens'], status)
+                            st.session_state.db.log_agent_run(
+                                st.session_state.get('eval_session_id'), 
+                                "QAAgent", st.session_state.get('qa_retry_count', 0) + 1, {}, out_j, 
+                                meta['time'], meta['tokens'], status,
+                                meta.get('input_tokens', 0), meta.get('output_tokens', 0)
+                            )
                         except Exception: pass
                     qa_j = st.session_state.cache_qa.model_dump_json() if hasattr(st.session_state.cache_qa, 'model_dump_json') else json.dumps(st.session_state.cache_qa.__dict__, separators=(',', ':'))
                     

@@ -66,7 +66,9 @@ class BaseAgent:
         
         self.last_run_metadata = {
             "time": 0.0,
-            "tokens": 0
+            "tokens": 0,
+            "input_tokens": 0,
+            "output_tokens": 0
         }
         start_time = _time.time()
         
@@ -120,6 +122,8 @@ class BaseAgent:
                     # Capture token usage
                     if hasattr(response, 'usage_metadata') and response.usage_metadata:
                         self.last_run_metadata['tokens'] = getattr(response.usage_metadata, 'total_token_count', 0)
+                        self.last_run_metadata['input_tokens'] = getattr(response.usage_metadata, 'prompt_token_count', 0)
+                        self.last_run_metadata['output_tokens'] = getattr(response.usage_metadata, 'candidates_token_count', 0)
                     
                     self.last_run_metadata['time'] = round(_time.time() - start_time, 2)
                     
@@ -185,7 +189,12 @@ class BaseAgent:
         then parses the final accumulated JSON into pydantic_schema."""
         system_prompt += "\n\nCRITICAL RULE: You MUST output all your responses, JSON values, and descriptions in ENGLISH ONLY."
         
-        self.last_run_metadata = {"time": 0.0, "tokens": 0}
+        self.last_run_metadata = {
+            "time": 0.0,
+            "tokens": 0,
+            "input_tokens": 0,
+            "output_tokens": 0
+        }
         start_time = _time.time()
         
         models_to_try = [self.model_name]

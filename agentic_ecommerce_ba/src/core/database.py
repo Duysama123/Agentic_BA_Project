@@ -220,7 +220,7 @@ class DatabaseManager:
         except Exception as e:
             print(f"Error updating eval session on Supabase: {e}")
 
-    def log_agent_run(self, session_id, agent_name, attempt_number, input_data, output_data, processing_time, llm_tokens_used, status):
+    def log_agent_run(self, session_id, agent_name, attempt_number, input_data, output_data, processing_time, llm_tokens_used, status, llm_input_tokens=0, llm_output_tokens=0):
         data = {
             "session_id": session_id,
             "agent_name": agent_name,
@@ -229,7 +229,9 @@ class DatabaseManager:
             "output_data": output_data if output_data else {},
             "processing_time": processing_time,
             "llm_tokens_used": llm_tokens_used,
-            "status": status
+            "status": status,
+            "llm_input_tokens": llm_input_tokens,
+            "llm_output_tokens": llm_output_tokens
         }
         # Log to local CSV and JSONL
         self._log_to_local_csv("eval_agent_runs.csv", data)
