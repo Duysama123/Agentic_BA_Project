@@ -349,6 +349,14 @@ def main():
     
     footer {visibility: hidden;}
     
+    /* Hide Streamlit Cloud branding: Fork, GitHub icon, toolbar menu, deploy button, footer badge */
+    [data-testid="stToolbar"] {display: none !important;}
+    [data-testid="stDecoration"] {display: none !important;}
+    [data-testid="stStatusWidget"] {display: none !important;}
+    .stDeployButton {display: none !important;}
+    #MainMenu {visibility: hidden !important;}
+    header[data-testid="stHeader"] {background: transparent !important;}
+    
     /* === Modern Sidebar (CodingLab style) === */
     [data-testid="stSidebar"] {
         background-color: #111827 !important; /* Deep dark blue */
