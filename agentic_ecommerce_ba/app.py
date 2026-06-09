@@ -362,6 +362,7 @@ def main():
     if 'vector_store' not in st.session_state: st.session_state.vector_store = RAGVectorStore()
         
     # State Management
+    if 'enable_hitl' not in st.session_state: st.session_state.enable_hitl = True
     if 'pipeline_state' not in st.session_state: st.session_state.pipeline_state = 'IDLE'
     if 'refinement_round' not in st.session_state: st.session_state.refinement_round = 0
     if 'qa_retry_count' not in st.session_state: st.session_state.qa_retry_count = 0
@@ -473,6 +474,15 @@ def main():
                     st.caption("Using shared default keys.")
                 else:
                     st.caption("No API key set!")
+
+        st.markdown("---")
+        with st.expander("Pipeline Configuration", expanded=True):
+            enable_hitl = st.checkbox(
+                "Enable Human-in-the-Loop",
+                value=st.session_state.get('enable_hitl', True),
+                help="If disabled, the pipeline runs fully autonomously without checkpoints."
+            )
+            st.session_state.enable_hitl = enable_hitl
 
         # Logout button
         if st.button("Sign Out", use_container_width=True):
@@ -725,8 +735,23 @@ def main():
                     st.rerun()
             else:
                 time.sleep(1)
-                st.session_state.pipeline_state = 'HITL_VISION'
                 st.session_state.step_timings['hitl1_start'] = _time.time()
+                if st.session_state.get('enable_hitl', True):
+                    st.session_state.pipeline_state = 'HITL_VISION'
+                else:
+                    st.session_state.pipeline_state = 'PROCESSING_BA'
+                    st.session_state.step_timings['hitl1'] = 0.0
+                    st.session_state.step_timings['hitl1_subtitle'] = "Bypassed (No HITL)"
+                    try:
+                        st.session_state.db.log_human_review(
+                            st.session_state.get('eval_session_id'),
+                            "HITL-1",
+                            "approve",
+                            {},
+                            {},
+                            0.0
+                        )
+                    except Exception: pass
                 st.rerun()
 
     # ========================================================
@@ -765,8 +790,12 @@ def main():
             with col1:
                 if st.button("✓ Approve & Continue", type="primary", use_container_width=True):
                     hitl1_start = st.session_state.step_timings.get('hitl1_start', _time.time())
-                    st.session_state.step_timings['hitl1'] = round(_time.time() - hitl1_start, 2)
+                    spent = round(_time.time() - hitl1_start, 2)
+                    st.session_state.step_timings['hitl1'] = spent
                     st.session_state.step_timings['hitl1_subtitle'] = "Approved without edits"
+                    try:
+                        st.session_state.db.log_human_review(st.session_state.get('eval_session_id'), "HITL-1", "approve", {}, {}, spent)
+                    except Exception: pass
                     st.session_state.pipeline_state = 'PROCESSING_BA'
                     st.rerun()
             with col2:
@@ -788,8 +817,12 @@ def main():
                     st.session_state.cache_vision.detected_user_flows = [f.strip() for f in flows_input.split('\n') if f.strip()]
                     
                     hitl1_start = st.session_state.step_timings.get('hitl1_start', _time.time())
-                    st.session_state.step_timings['hitl1'] = round(_time.time() - hitl1_start, 2)
+                    spent = round(_time.time() - hitl1_start, 2)
+                    st.session_state.step_timings['hitl1'] = spent
                     st.session_state.step_timings['hitl1_subtitle'] = "Approved with edits"
+                    try:
+                        st.session_state.db.log_human_review(st.session_state.get('eval_session_id'), "HITL-1", "edit_approve", {}, {}, spent)
+                    except Exception: pass
                     st.session_state.pipeline_state = 'PROCESSING_BA'
                     st.rerun()
             with col3:
@@ -925,7 +958,22 @@ def main():
             else:
                 time.sleep(1)
                 st.session_state.step_timings['hitl2_start'] = _time.time()
-                st.session_state.pipeline_state = 'HITL_BA'
+                if st.session_state.get('enable_hitl', True):
+                    st.session_state.pipeline_state = 'HITL_BA'
+                else:
+                    st.session_state.pipeline_state = 'PROCESSING_DIAGRAMS'
+                    st.session_state.step_timings['hitl2'] = 0.0
+                    st.session_state.step_timings['hitl2_subtitle'] = "Bypassed (No HITL)"
+                    try:
+                        st.session_state.db.log_human_review(
+                            st.session_state.get('eval_session_id'),
+                            "HITL-2",
+                            "approve",
+                            {},
+                            {},
+                            0.0
+                        )
+                    except Exception: pass
                 st.rerun()
 
 
@@ -969,8 +1017,12 @@ def main():
             with col1:
                 if st.button("✓ Approve SRS", type="primary", use_container_width=True):
                     hitl2_start = st.session_state.step_timings.get('hitl2_start', _time.time())
-                    st.session_state.step_timings['hitl2'] = round(_time.time() - hitl2_start, 2)
+                    spent = round(_time.time() - hitl2_start, 2)
+                    st.session_state.step_timings['hitl2'] = spent
                     st.session_state.step_timings['hitl2_subtitle'] = "Approved without edits"
+                    try:
+                        st.session_state.db.log_human_review(st.session_state.get('eval_session_id'), "HITL-2", "approve", {}, {}, spent)
+                    except Exception: pass
                     st.session_state.pipeline_state = 'PROCESSING_DIAGRAMS'
                     st.rerun()
             with col2:
@@ -982,8 +1034,12 @@ def main():
                         new_reqs.append(FunctionalRequirement(**r))
                     st.session_state.cache_ba.functional_requirements = new_reqs
                     hitl2_start = st.session_state.step_timings.get('hitl2_start', _time.time())
-                    st.session_state.step_timings['hitl2'] = round(_time.time() - hitl2_start, 2)
+                    spent = round(_time.time() - hitl2_start, 2)
+                    st.session_state.step_timings['hitl2'] = spent
                     st.session_state.step_timings['hitl2_subtitle'] = "Approved with edits"
+                    try:
+                        st.session_state.db.log_human_review(st.session_state.get('eval_session_id'), "HITL-2", "edit_approve", {}, {}, spent)
+                    except Exception: pass
                     st.session_state.pipeline_state = 'PROCESSING_DIAGRAMS'
                     st.rerun()
             with col3:
@@ -1079,13 +1135,54 @@ def main():
                     st.session_state.pipeline_state = 'HITL_QA'
                     st.rerun()
             else:
-                # Capture diagrams step timing before going to HITL_QA
+                # Capture diagrams step timing
                 diag_start = st.session_state.step_timings.get('diagrams_start', _time.time())
                 st.session_state.step_timings['diagrams'] = round(_time.time() - diag_start, 2)
                 st.session_state.step_timings['diagrams_subtitle'] = "Diagram + QA completed - approved"
                 
                 time.sleep(1)
-                st.session_state.pipeline_state = 'HITL_QA'
+                if st.session_state.get('enable_hitl', True):
+                    st.session_state.pipeline_state = 'HITL_QA'
+                else:
+                    # Automated approval and project saving
+                    vision_j = st.session_state.cache_vision.model_dump_json() if hasattr(st.session_state.cache_vision, 'model_dump_json') else json.dumps(st.session_state.cache_vision.__dict__)
+                    ba_j = st.session_state.cache_ba.model_dump_json() if hasattr(st.session_state.cache_ba, 'model_dump_json') else json.dumps(st.session_state.cache_ba.__dict__)
+                    diag_j = st.session_state.cache_diagram.model_dump_json() if hasattr(st.session_state.cache_diagram, 'model_dump_json') else json.dumps(st.session_state.cache_diagram.__dict__)
+                    qa_j = st.session_state.cache_qa.model_dump_json() if hasattr(st.session_state.cache_qa, 'model_dump_json') else json.dumps(st.session_state.cache_qa.__dict__)
+
+                    # Log dummy human review for Gate 3
+                    try:
+                        st.session_state.db.log_human_review(
+                            st.session_state.get('eval_session_id'), 
+                            "HITL-3", 
+                            "approve", 
+                            {}, 
+                            {}, 
+                            0.0
+                        )
+                    except Exception: pass
+
+                    if st.session_state.active_project_id is None:
+                        qa_dict = json.loads(qa_j) if qa_j else {}
+                        qa_dict['_step_timings'] = st.session_state.get('step_timings', {})
+                        qa_j_with_timings = json.dumps(qa_dict, separators=(',', ':'))
+                        try:
+                            resp = st.session_state.db.save_project(
+                                st.session_state.user.id, st.session_state.image_name, 
+                                st.session_state.image_bytes, vision_j, ba_j, diag_j, qa_j_with_timings
+                            )
+                            if isinstance(resp, list) and len(resp) > 0:
+                                st.session_state.active_project_id = resp[0]['id']
+                        except Exception: pass
+                    
+                    try:
+                        if st.session_state.get('eval_session_id'):
+                            tot_time = round(_time.time() - st.session_state.get('eval_session_start_time', _time.time()), 2)
+                            st.session_state.db.update_eval_session(st.session_state.eval_session_id, tot_time, "approved")
+                            st.session_state.db.save_generated_document(st.session_state.eval_session_id, 1, ba_j, diag_j, '{}', qa_j)
+                    except Exception: pass
+
+                    st.session_state.pipeline_state = 'COMPLETED'
                 st.rerun()
 
     # ========================================================
