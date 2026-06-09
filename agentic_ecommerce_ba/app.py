@@ -1287,7 +1287,7 @@ def main():
             
             # ---- CACHED DOCUMENT EXPORT ----
             @st.cache_data(show_spinner=False, ttl=3600)
-            def generate_cached_docs(_ba_j, _diag_j):
+            def generate_cached_docs(_ba_j, _diag_j, _vision_j, _img_bytes):
                 from src.core.document_exporter import generate_srs_docx, convert_docx_to_pdf
                 import tempfile, os, traceback
                 out_dir = tempfile.mkdtemp()
@@ -1297,7 +1297,7 @@ def main():
                 
                 try:
                     if os.path.exists(template_path):
-                        generate_srs_docx(_ba_j, template_path, docx_path, _diag_j)
+                        generate_srs_docx(_ba_j, template_path, docx_path, _diag_j, _vision_j, _img_bytes)
                         
                         with open(docx_path, "rb") as f:
                             docx_bytes = f.read()
@@ -1326,7 +1326,11 @@ def main():
                     if hasattr(st.session_state, 'cache_diagram') and st.session_state.cache_diagram:
                         diag_j = st.session_state.cache_diagram.model_dump_json() if hasattr(st.session_state.cache_diagram, 'model_dump_json') else json.dumps(st.session_state.cache_diagram.__dict__)
 
-                    docx_bytes, pdf_bytes, err = generate_cached_docs(ba_j, diag_j)
+                    vision_j = None
+                    if hasattr(st.session_state, 'cache_vision') and st.session_state.cache_vision:
+                        vision_j = st.session_state.cache_vision.model_dump_json() if hasattr(st.session_state.cache_vision, 'model_dump_json') else json.dumps(st.session_state.cache_vision.__dict__)
+
+                    docx_bytes, pdf_bytes, err = generate_cached_docs(ba_j, diag_j, vision_j, st.session_state.image_bytes)
                     
                     if err:
                         st.error(f"Error generating document: {err}")

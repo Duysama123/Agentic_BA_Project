@@ -2,10 +2,11 @@ import os
 import json
 from docxtpl import DocxTemplate
 
-def generate_srs_docx(ba_data_json: str, template_path: str, output_path: str, diagram_data_json: str = None) -> str:
+def generate_srs_docx(ba_data_json: str, template_path: str, output_path: str, diagram_data_json: str = None, vision_data_json: str = None, image_bytes: bytes = None) -> str:
     """
     Load data from BA Agent into the IEEE DOCX template.
     If diagram_data_json is provided, appends to the DOCX.
+    If vision_data_json/image_bytes are provided, integrates them.
     Returns the path to the generated DOCX.
     """
     data = json.loads(ba_data_json)
@@ -25,8 +26,10 @@ def generate_srs_docx(ba_data_json: str, template_path: str, output_path: str, d
     template_vars = doc.get_undeclared_template_variables()
     
     append_at_end = True
+    append_vision_at_end = True
     temp_files = []
     
+    # Process diagrams
     if diagram_data_json:
         diag_data = json.loads(diagram_data_json)
         data['diagram_explanation'] = diag_data.get("diagram_explanation", "")
@@ -76,6 +79,41 @@ def generate_srs_docx(ba_data_json: str, template_path: str, output_path: str, d
                 except Exception as e:
                     print("Failed to fetch sequence image:", e)
 
+    # Process vision data (mockup and components)
+    if vision_data_json:
+        try:
+            v_data = json.loads(vision_data_json)
+            data['page_name'] = v_data.get('page_name', 'UI')
+            
+            raw_elements = v_data.get('elements', [])
+            ui_elements = []
+            for el in raw_elements:
+                ui_elements.append({
+                    'id': el.get('id', '') if isinstance(el, dict) else getattr(el, 'id', ''),
+                    'type': el.get('type', '') if isinstance(el, dict) else getattr(el, 'type', ''),
+                    'label': el.get('label', '') if isinstance(el, dict) else getattr(el, 'label', ''),
+                    'description': el.get('description', '') if isinstance(el, dict) else getattr(el, 'description', '')
+                })
+            data['ui_elements'] = ui_elements
+            data['detected_user_flows'] = v_data.get('detected_user_flows', [])
+            
+            if 'mockup_image' in template_vars or 'ui_elements' in template_vars:
+                append_vision_at_end = False
+                if image_bytes:
+                    import tempfile
+                    from docxtpl import InlineImage
+                    from docx.shared import Inches
+                    try:
+                        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+                        tmp.write(image_bytes)
+                        tmp.close()
+                        temp_files.append(tmp.name)
+                        data['mockup_image'] = InlineImage(doc, tmp.name, width=Inches(6.0))
+                    except Exception as ie:
+                        print("Failed to save mockup image for inline template:", ie)
+        except Exception as ve:
+            print("Failed to parse vision data context:", ve)
+
     print("DEBUG - data keys:", data.keys())
     
     # Render the document with the context
@@ -91,22 +129,30 @@ def generate_srs_docx(ba_data_json: str, template_path: str, output_path: str, d
             pass
             
     # Append extras if available and not included in template
-    if diagram_data_json and append_at_end:
-        append_extras_to_docx(output_path, diagram_data_json)
+    if (diagram_data_json and append_at_end) or (vision_data_json and append_vision_at_end):
+        append_extras_to_docx(
+            output_path, 
+            diagram_data_json if append_at_end else None, 
+            vision_data_json if append_vision_at_end else None, 
+            image_bytes if append_vision_at_end else None
+        )
         
     return output_path
 
-def append_extras_to_docx(docx_path: str, diagram_data_json: str = None):
+def append_extras_to_docx(docx_path: str, diagram_data_json: str = None, vision_data_json: str = None, image_bytes: bytes = None):
     import base64
     import zlib
     import requests
     import tempfile
     from docx import Document
     from docx.shared import Inches
+    import json
+    import os
 
     try:
         doc = Document(docx_path)
         
+        # 1. Append diagrams if provided and not handled inline
         if diagram_data_json:
             diag_data = json.loads(diagram_data_json)
             doc.add_page_break()
@@ -156,6 +202,58 @@ def append_extras_to_docx(docx_path: str, diagram_data_json: str = None):
             if explanation:
                 doc.add_heading('Diagram Explanation', level=2)
                 doc.add_paragraph(explanation)
+
+        # 2. Append vision if provided and not handled inline
+        if vision_data_json:
+            v_data = json.loads(vision_data_json)
+            doc.add_page_break()
+            doc.add_heading('Appendix C: User Interface Mockup & Component Specifications', level=1)
+            
+            page_name = v_data.get('page_name', 'UI Screen')
+            doc.add_heading(f'Mockup Screen: {page_name}', level=2)
+            
+            if image_bytes:
+                try:
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                        tmp.write(image_bytes)
+                        tmp_path = tmp.name
+                    doc.add_picture(tmp_path, width=Inches(6.0))
+                    os.unlink(tmp_path)
+                except Exception as e:
+                    print("Failed to append mockup picture:", e)
+                    
+            # Add table
+            doc.add_heading('UI Component Specifications', level=2)
+            elements = v_data.get('elements', [])
+            if elements:
+                table = doc.add_table(rows=1, cols=4)
+                table.style = 'Table Grid'
+                
+                hdr_cells = table.rows[0].cells
+                hdr_cells[0].text = 'ID'
+                hdr_cells[1].text = 'Type'
+                hdr_cells[2].text = 'Label'
+                hdr_cells[3].text = 'Description'
+                
+                # Make header bold
+                for cell in hdr_cells:
+                    for p in cell.paragraphs:
+                        for run in p.runs:
+                            run.font.bold = True
+                
+                for el in elements:
+                    row_cells = table.add_row().cells
+                    row_cells[0].text = str(el.get('id', ''))
+                    row_cells[1].text = str(el.get('type', ''))
+                    row_cells[2].text = str(el.get('label', '') or '')
+                    row_cells[3].text = str(el.get('description', ''))
+                    
+            # Add user flows
+            flows = v_data.get('detected_user_flows', [])
+            if flows:
+                doc.add_heading('Detected User Flows', level=2)
+                for flow in flows:
+                    doc.add_paragraph(flow, style='List Paragraph')
 
         doc.save(docx_path)
     except Exception as e:
