@@ -10,7 +10,7 @@ import base64
 import streamlit.components.v1 as components
 
 def render_mermaid(code: str):
-    """Render Mermaid diagram using client-side Mermaid.js — no external API needed."""
+    """Render Mermaid diagram using client-side Mermaid.js with interactive zoom/pan."""
     if not code or not code.strip():
         st.warning("No diagram code available.")
         return
@@ -33,30 +33,126 @@ def render_mermaid(code: str):
     <head>
         <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
         <style>
-            body { margin: 0; background: white; }
-            #mermaid-container {
-                background-color: white;
-                padding: 16px;
-                display: flex;
-                justify-content: center;
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { background: #ffffff; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; }
+            .toolbar {
+                display: flex; gap: 4px; padding: 6px 10px;
+                background: #f8f9fa; border-bottom: 1px solid #e5e7eb;
+                align-items: center; user-select: none;
+            }
+            .toolbar button {
+                width: 32px; height: 32px; border: 1px solid #d1d5db; border-radius: 6px;
+                background: white; cursor: pointer; font-size: 16px;
+                display: flex; align-items: center; justify-content: center;
+                color: #374151; transition: all 0.15s;
+            }
+            .toolbar button:hover { background: #e5e7eb; }
+            .toolbar button:active { background: #d1d5db; }
+            .toolbar .sep { width: 1px; height: 20px; background: #d1d5db; margin: 0 4px; }
+            .toolbar .zoom-label {
+                font-size: 12px; color: #6b7280; min-width: 44px; text-align: center;
+                font-weight: 600;
+            }
+            .toolbar .hint {
+                font-size: 11px; color: #9ca3af; margin-left: auto;
+            }
+            #viewport {
+                width: 100%; height: calc(100vh - 45px); overflow: hidden;
+                cursor: grab; position: relative; background: white;
+            }
+            #viewport:active { cursor: grabbing; }
+            #diagram-wrap {
+                transform-origin: 0 0; position: absolute; top: 0; left: 0;
+                min-width: 100%;
             }
             .mermaid { font-family: 'Segoe UI', Arial, sans-serif; }
-            .mermaid svg { max-width: 100%; height: auto; }
+            .mermaid svg { display: block; width: 100%; height: auto; }
         </style>
     </head>
     <body>
-        <div id="mermaid-container">
-            <pre class="mermaid">MERMAID_PLACEHOLDER</pre>
+        <div class="toolbar">
+            <button onclick="zoomIn()" title="Zoom in">+</button>
+            <button onclick="zoomOut()" title="Zoom out">&minus;</button>
+            <div class="sep"></div>
+            <span class="zoom-label" id="zoom-label">100%</span>
+            <div class="sep"></div>
+            <button onclick="resetView()" title="Fit to screen">&#8634;</button>
+            <span class="hint">Scroll to zoom &middot; Drag to pan</span>
+        </div>
+        <div id="viewport">
+            <div id="diagram-wrap">
+                <pre class="mermaid">MERMAID_PLACEHOLDER</pre>
+            </div>
         </div>
         <script>
             mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+
+            let scale = 1, panX = 0, panY = 0;
+            let dragging = false, startX, startY;
+            const wrap = document.getElementById('diagram-wrap');
+            const vp = document.getElementById('viewport');
+            const lbl = document.getElementById('zoom-label');
+
+            function applyTransform() {
+                wrap.style.transform = 'translate(' + panX + 'px,' + panY + 'px) scale(' + scale + ')';
+                lbl.textContent = Math.round(scale * 100) + '%';
+            }
+
+            // Mouse wheel zoom
+            vp.addEventListener('wheel', function(e) {
+                e.preventDefault();
+                const rect = vp.getBoundingClientRect();
+                const mx = e.clientX - rect.left;
+                const my = e.clientY - rect.top;
+                const factor = e.deltaY < 0 ? 1.12 : 0.89;
+                const newScale = Math.min(Math.max(scale * factor, 0.15), 5);
+                // Zoom toward cursor
+                panX = mx - (mx - panX) * (newScale / scale);
+                panY = my - (my - panY) * (newScale / scale);
+                scale = newScale;
+                applyTransform();
+            }, { passive: false });
+
+            // Drag to pan
+            vp.addEventListener('mousedown', function(e) {
+                dragging = true; startX = e.clientX - panX; startY = e.clientY - panY;
+            });
+            window.addEventListener('mousemove', function(e) {
+                if (!dragging) return;
+                panX = e.clientX - startX; panY = e.clientY - startY;
+                applyTransform();
+            });
+            window.addEventListener('mouseup', function() { dragging = false; });
+
+            function zoomIn()  { scale = Math.min(scale * 1.25, 5); applyTransform(); }
+            function zoomOut() { scale = Math.max(scale * 0.8, 0.15); applyTransform(); }
+            function resetView() {
+                scale = 1; panX = 0; panY = 0; applyTransform();
+                // Auto-fit: wait for SVG to be ready then center
+                setTimeout(function() {
+                    var svg = wrap.querySelector('svg');
+                    if (svg) {
+                        var svgW = svg.getBoundingClientRect().width / scale;
+                        var vpW = vp.clientWidth;
+                        if (svgW > vpW) {
+                            scale = vpW / svgW * 0.95;
+                        }
+                        panX = Math.max(0, (vpW - svgW * scale) / 2);
+                        panY = 10;
+                        applyTransform();
+                    }
+                }, 100);
+            }
+
+            // Auto-fit on first render
+            setTimeout(resetView, 800);
         </script>
     </body>
     </html>
     """
     html_content = html_template.replace("MERMAID_PLACEHOLDER", escaped)
     
-    components.html(html_content, height=520, scrolling=True)
+    components.html(html_content, height=560, scrolling=False)
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
