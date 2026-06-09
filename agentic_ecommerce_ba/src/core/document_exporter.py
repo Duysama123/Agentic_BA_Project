@@ -172,7 +172,7 @@ def append_extras_to_docx(docx_path: str, diagram_data_json: str = None, vision_
             fc_code = diag_data.get("flowchart_diagram", "")
             if fc_code:
                 try:
-                    r = requests.get(get_kroki_url(fc_code), timeout=15)
+                    r = requests.get(get_kroki_url(fc_code), timeout=3)
                     if r.status_code == 200:
                         with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                             tmp.write(r.content)
@@ -187,7 +187,7 @@ def append_extras_to_docx(docx_path: str, diagram_data_json: str = None, vision_
             seq_code = diag_data.get("sequence_diagram", "")
             if seq_code:
                 try:
-                    r = requests.get(get_kroki_url(seq_code), timeout=15)
+                    r = requests.get(get_kroki_url(seq_code), timeout=3)
                     if r.status_code == 200:
                         with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                             tmp.write(r.content)

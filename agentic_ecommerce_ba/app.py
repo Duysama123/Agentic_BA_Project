@@ -498,7 +498,7 @@ def main():
     if 'active_project_id' not in st.session_state: st.session_state.active_project_id = None
     if 'rag_context' not in st.session_state: st.session_state.rag_context = ""
     
-    for key in ['cache_vision', 'cache_ba', 'cache_diagram', 'cache_qa']:
+    for key in ['cache_vision', 'cache_ba', 'cache_diagram', 'cache_qa', 'export_docx_bytes', 'export_pdf_bytes', 'export_error']:
         if key not in st.session_state: st.session_state[key] = None
     
     # Pipeline timing tracker
@@ -527,7 +527,7 @@ def main():
         
         if st.button("+ New Project", type="primary", use_container_width=True):
             st.session_state.pipeline_state = 'IDLE'
-            for key in ['cache_vision', 'cache_ba', 'cache_diagram', 'cache_qa']:
+            for key in ['cache_vision', 'cache_ba', 'cache_diagram', 'cache_qa', 'export_docx_bytes', 'export_pdf_bytes', 'export_error']:
                 st.session_state[key] = None
             st.session_state.active_project_id = None
             st.session_state.step_timings = {}
@@ -568,6 +568,9 @@ def main():
                             else:
                                 st.session_state.step_timings = {}
                             st.session_state.cache_qa = dict_to_obj(qa_raw)
+                            
+                            for key in ['export_docx_bytes', 'export_pdf_bytes', 'export_error']:
+                                st.session_state[key] = None
                             
                             st.session_state.pipeline_state = 'COMPLETED'
                             st.session_state.active_project_id = p['id']
@@ -786,7 +789,7 @@ def main():
                 else:
                     st.session_state.pdf_bytes = None
                 
-                for key in ['cache_vision', 'cache_ba', 'cache_diagram', 'cache_qa']:
+                for key in ['cache_vision', 'cache_ba', 'cache_diagram', 'cache_qa', 'export_docx_bytes', 'export_pdf_bytes', 'export_error']:
                     st.session_state[key] = None
                 st.session_state.vector_store = RAGVectorStore()
                 if 'eval_session_id' not in st.session_state or st.session_state.eval_session_id is None:
@@ -1569,20 +1572,35 @@ def main():
                 st.markdown("### Export Final Documents")
                 ba_j = safe_model_dump_json(st.session_state.cache_ba)
                 
-                with st.spinner("Generating IEEE Standard Documents..."):
-                    diag_j = None
-                    if hasattr(st.session_state, 'cache_diagram') and st.session_state.cache_diagram:
-                        diag_j = safe_model_dump_json(st.session_state.cache_diagram)
+                if st.session_state.export_docx_bytes is None and st.session_state.export_error is None:
+                    st.info("📄 Generating IEEE standard documents (DOCX and PDF) requires rendering and compiling diagrams. Click the button below to compile documents.")
+                    if st.button("⚙️ Generate Export Documents (DOCX & PDF)", type="primary", use_container_width=True):
+                        with st.spinner("Generating IEEE Standard Documents..."):
+                            diag_j = None
+                            if hasattr(st.session_state, 'cache_diagram') and st.session_state.cache_diagram:
+                                diag_j = safe_model_dump_json(st.session_state.cache_diagram)
 
-                    vision_j = None
-                    if hasattr(st.session_state, 'cache_vision') and st.session_state.cache_vision:
-                        vision_j = safe_model_dump_json(st.session_state.cache_vision)
+                            vision_j = None
+                            if hasattr(st.session_state, 'cache_vision') and st.session_state.cache_vision:
+                                vision_j = safe_model_dump_json(st.session_state.cache_vision)
 
-                    docx_bytes, pdf_bytes, err = generate_cached_docs(ba_j, diag_j, vision_j, st.session_state.image_bytes)
-                    
-                    if err:
-                        st.error(f"Error generating document: {err}")
-                    elif docx_bytes:
+                            docx_bytes, pdf_bytes, err = generate_cached_docs(ba_j, diag_j, vision_j, st.session_state.image_bytes)
+                            st.session_state.export_docx_bytes = docx_bytes
+                            st.session_state.export_pdf_bytes = pdf_bytes
+                            st.session_state.export_error = err
+                            st.rerun()
+                else:
+                    if st.session_state.export_error:
+                        st.error(f"Error generating document: {st.session_state.export_error}")
+                        if st.button("🔄 Retry Document Generation", use_container_width=True):
+                            st.session_state.export_docx_bytes = None
+                            st.session_state.export_pdf_bytes = None
+                            st.session_state.export_error = None
+                            st.rerun()
+                    else:
+                        docx_bytes = st.session_state.export_docx_bytes
+                        pdf_bytes = st.session_state.export_pdf_bytes
+                        
                         col1, col2 = st.columns(2)
                         with col1:
                             st.download_button(
@@ -1605,6 +1623,13 @@ def main():
                                 )
                             else:
                                 st.info("PDF Generation not supported on this OS without Word/LibreOffice.")
+                        
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        if st.button("🔄 Regenerate Documents", use_container_width=True):
+                            st.session_state.export_docx_bytes = None
+                            st.session_state.export_pdf_bytes = None
+                            st.session_state.export_error = None
+                            st.rerun()
             
             # ---- TAB 2: Diagrams ----
             with tab_diagrams:
