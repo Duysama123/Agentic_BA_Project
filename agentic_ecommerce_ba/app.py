@@ -775,7 +775,10 @@ def main():
                 st.session_state.vector_store = RAGVectorStore()
                 if 'eval_session_id' not in st.session_state or st.session_state.eval_session_id is None:
                     try:
-                        sess_id = st.session_state.db.create_eval_session(st.session_state.image_name if 'image_name' in st.session_state else "Unknown")
+                        sess_id = st.session_state.db.create_eval_session(
+                            st.session_state.image_name if 'image_name' in st.session_state else "Unknown",
+                            is_hitl=st.session_state.get('enable_hitl', True)
+                        )
                         st.session_state.eval_session_id = sess_id
                         st.session_state.eval_session_start_time = _time.time()
                     except Exception as e:
@@ -938,7 +941,10 @@ def main():
                     st.session_state.cache_vision = None
                     if 'eval_session_id' not in st.session_state or st.session_state.eval_session_id is None:
                         try:
-                            sess_id = st.session_state.db.create_eval_session(st.session_state.image_name if 'image_name' in st.session_state else "Unknown")
+                            sess_id = st.session_state.db.create_eval_session(
+                                st.session_state.image_name if 'image_name' in st.session_state else "Unknown",
+                                is_hitl=st.session_state.get('enable_hitl', True)
+                            )
                             st.session_state.eval_session_id = sess_id
                             st.session_state.eval_session_start_time = _time.time()
                         except Exception as e:

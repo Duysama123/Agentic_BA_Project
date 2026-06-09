@@ -167,13 +167,14 @@ class DatabaseManager:
     # ==========================================
     # EVALUATION & TELEMETRY TRACKING METHODS
     # ==========================================
-    def create_eval_session(self, input_image_name):
+    def create_eval_session(self, input_image_name, is_hitl=True):
         session_id = str(uuid.uuid4())
         data = {
             "id": session_id,
             "input_image_name": input_image_name,
             "total_processing_time": 0,
-            "final_status": "processing"
+            "final_status": "processing",
+            "is_hitl": is_hitl
         }
         # Log to local CSV and JSONL
         self._log_to_local_csv("eval_sessions.csv", data)
@@ -186,13 +187,7 @@ class DatabaseManager:
         headers = self._headers(st.session_state.get('access_token'))
         headers["Prefer"] = "return=representation"
         try:
-            db_data = {
-                "id": session_id,
-                "input_image_name": input_image_name,
-                "total_processing_time": 0,
-                "final_status": "processing"
-            }
-            res = requests.post(endpoint, headers=headers, json=db_data)
+            res = requests.post(endpoint, headers=headers, json=data)
         except Exception as e:
             print(f"Error creating eval session on Supabase: {e}")
         return session_id
