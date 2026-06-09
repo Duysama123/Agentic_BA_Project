@@ -654,6 +654,8 @@ def main():
                 
                 for key in ['cache_vision', 'cache_ba', 'cache_diagram', 'cache_qa']:
                     st.session_state[key] = None
+                from src.rag_engine.vector_store import RAGVectorStore
+                st.session_state.vector_store = RAGVectorStore()
                 if 'eval_session_id' not in st.session_state or st.session_state.eval_session_id is None:
                     try:
                         sess_id = st.session_state.db.create_eval_session(st.session_state.image_name if 'image_name' in st.session_state else "Unknown")
@@ -1267,11 +1269,13 @@ def main():
                         st.session_state.db.update_eval_session(st.session_state.eval_session_id, tot_time, "rejected")
                 except Exception: pass
 
-                st.session_state.pipeline_state = 'UPLOAD'
+                st.session_state.pipeline_state = 'IDLE'
                 st.session_state.cache_vision = None
                 st.session_state.cache_ba = None
                 st.session_state.cache_diagram = None
                 st.session_state.cache_qa = None
+                from src.rag_engine.vector_store import RAGVectorStore
+                st.session_state.vector_store = RAGVectorStore()
                 st.rerun()
     # ========================================================
     # STATE 8: COMPLETED
