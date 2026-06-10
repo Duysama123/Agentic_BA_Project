@@ -627,6 +627,15 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
+    if 'db' not in st.session_state:
+        st.session_state.db = DatabaseManager()
+    if 'user' not in st.session_state:
+        st.session_state.user = None
+    if 'orig_gemini_api_key' not in st.session_state:
+        st.session_state.orig_gemini_api_key = os.getenv("GEMINI_API_KEY", "")
+    if 'orig_gemini_api_keys' not in st.session_state:
+        st.session_state.orig_gemini_api_keys = os.getenv("GEMINI_API_KEYS", "")
+
     if not st.session_state.user:
         login_ui()
         return
