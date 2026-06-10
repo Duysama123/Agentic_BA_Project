@@ -641,8 +641,7 @@ def main():
         return
 
     # Inject custom floating sidebar toggle button via JS only when logged in
-    st.markdown("""
-    <style>
+    st.markdown("""<style>
     #sidebar-toggle-btn {
         position: fixed;
         top: 50%;
@@ -670,9 +669,7 @@ def main():
         background-color: #374151;
         width: 30px;
     }
-    </style>
-    <div id="sidebar-toggle-btn" title="Toggle sidebar" onclick="toggleSidebar()">&#8250;</div>
-    <script>
+    </style><div id="sidebar-toggle-btn" title="Toggle sidebar" onclick="toggleSidebar()">&#8250;</div><script>
     function getTargetDocument() {
         try {
             if (window.parent && window.parent.document) {
@@ -681,23 +678,16 @@ def main():
         } catch(e) {}
         return document;
     }
-
     function toggleSidebar() {
         var targetDoc = getTargetDocument();
-        
-        // Find collapse/expand controls in Streamlit
         var sidebar = targetDoc.querySelector('[data-testid="stSidebar"]');
         var collapsedControl = targetDoc.querySelector('[data-testid="collapsedControl"]');
-        
         var nativeBtn = null;
-        
-        // Math.sign(width - 50) === 1 means width > 50
         if (sidebar && Math.sign(sidebar.getBoundingClientRect().width - 50) === 1) {
             nativeBtn = sidebar.querySelector('button[aria-label*="Close"], button[aria-label*="Collapse"], [data-testid="collapsedControl"] button');
         } else if (collapsedControl) {
             nativeBtn = collapsedControl.querySelector('button, [data-testid="collapsedControl"] button');
         }
-        
         if (!nativeBtn) {
             var selectors = [
                 '[data-testid="collapsedControl"] button',
@@ -714,11 +704,9 @@ def main():
                 }
             }
         }
-        
         if (nativeBtn) {
             nativeBtn.click();
         } else {
-            // Hard fallback
             if (sidebar) {
                 if (sidebar.style.display === 'none' || sidebar.style.width === '0px') {
                     sidebar.style.display = 'flex';
@@ -728,26 +716,21 @@ def main():
                 }
             }
         }
-        
         setTimeout(syncArrow, 300);
     }
-    
     function syncArrow() {
         var targetDoc = getTargetDocument();
         var sidebar = targetDoc.querySelector('[data-testid="stSidebar"]');
         var floatBtn = document.getElementById('sidebar-toggle-btn');
         if (sidebar && floatBtn) {
             var rect = sidebar.getBoundingClientRect();
-            // Math.sign(width - 50) === -1 means width < 50
             var isCollapsed = (Math.sign(rect.width - 50) === -1) || sidebar.style.display === 'none';
             floatBtn.innerHTML = isCollapsed ? '&#8250;' : '&#8249;';
         }
     }
-    
     setTimeout(syncArrow, 800);
     setInterval(syncArrow, 2000);
-    </script>
-    """, unsafe_allow_html=True)
+    </script>""", unsafe_allow_html=True)
 
     # init_language_selector()  # Removed: English only
     
