@@ -434,21 +434,6 @@ def main():
         background-color: #b91c1c !important;
     }
     
-    /* ===== Disable Sidebar Collapse / Make Permanent ===== */
-    [data-testid="collapsedControl"] {
-        opacity: 0 !important;
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 1px !important;
-        height: 1px !important;
-        overflow: hidden !important;
-    }
-    /* Hide the close/collapse button inside the sidebar using language-independent selector */
-    [data-testid="stSidebar"] button:not([data-testid="stSidebarUserContent"] button) {
-        display: none !important;
-    }
-
     /* Primary Button (New Project) */
     [data-testid="stSidebar"] .stButton > button[kind="primary"] {
         background-color: #4F46E5 !important; /* Indigo blue */
@@ -614,31 +599,7 @@ def main():
         login_ui()
         return
 
-    # Inject auto-expand JS to force sidebar open if collapsed (e.g. remembered in localStorage or manually clicked)
-    st.markdown("""<script>
-    function forceSidebarOpen() {
-        var selectors = [
-            '[data-testid="collapsedControl"] button',
-            'button[aria-label*="Expand"]',
-            'button[aria-label*="expand"]',
-            'button[aria-label*="Mở rộng"]',
-            'button[aria-label*="mở rộng"]',
-            '[data-testid="collapsedControl"]'
-        ];
-        for (var sel of selectors) {
-            var btn = document.querySelector(sel);
-            if (btn) {
-                btn.click();
-                break;
-            }
-        }
-    }
-    setTimeout(forceSidebarOpen, 100);
-    setTimeout(forceSidebarOpen, 300);
-    setTimeout(forceSidebarOpen, 500);
-    setTimeout(forceSidebarOpen, 1000);
-    setInterval(forceSidebarOpen, 1000);
-    </script>""", unsafe_allow_html=True)
+
 
     # init_language_selector()  # Removed: English only
     
