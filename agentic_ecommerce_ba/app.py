@@ -436,8 +436,12 @@ def main():
     
     /* ===== Disable Sidebar Collapse / Make Permanent ===== */
     [data-testid="collapsedControl"] {
-        display: none !important;
-        visibility: hidden !important;
+        opacity: 0 !important;
+        position: fixed !important;
+        left: -100px !important;
+        width: 1px !important;
+        height: 1px !important;
+        overflow: hidden !important;
     }
     [data-testid="stSidebar"] button[aria-label*="Collapse"],
     [data-testid="stSidebar"] button[aria-label*="Close"],
@@ -611,7 +615,20 @@ def main():
         login_ui()
         return
 
-    # Custom toggle button code removed - sidebar is now fixed.
+    # Inject auto-expand JS to force sidebar open if collapsed (e.g. remembered in localStorage)
+    st.markdown("""<script>
+    function forceSidebarOpen() {
+        var expandBtn = document.querySelector('[data-testid="collapsedControl"] button');
+        if (expandBtn) {
+            expandBtn.click();
+        }
+    }
+    setTimeout(forceSidebarOpen, 100);
+    setTimeout(forceSidebarOpen, 300);
+    setTimeout(forceSidebarOpen, 500);
+    setTimeout(forceSidebarOpen, 1000);
+    setInterval(forceSidebarOpen, 2000);
+    </script>""", unsafe_allow_html=True)
 
     # init_language_selector()  # Removed: English only
     
