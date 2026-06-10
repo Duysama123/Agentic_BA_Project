@@ -635,7 +635,7 @@ def main():
         top: 50%;
         left: 0;
         transform: translateY(-50%);
-        z-index: 9999;
+        z-index: 99999;
         width: 24px;
         height: 60px;
         background-color: #1F2937;
@@ -649,7 +649,8 @@ def main():
         box-shadow: 3px 0 10px rgba(0,0,0,0.3);
         transition: background-color 0.2s, width 0.2s;
         color: #E5E7EB;
-        font-size: 14px;
+        font-size: 18px;
+        font-weight: bold;
         user-select: none;
     }
     #sidebar-toggle-btn:hover {
@@ -660,45 +661,71 @@ def main():
     <div id="sidebar-toggle-btn" title="Toggle sidebar" onclick="toggleSidebar()">&#8250;</div>
     <script>
     function toggleSidebar() {
-        // Try multiple selectors Streamlit uses for the sidebar button
-        var selectors = [
-            '[data-testid="collapsedControl"] button',
-            '[data-testid="collapsedControl"]',
-            'button[kind="header"][aria-label*="sidebar"]',
-            '[data-testid="stSidebarCollapsedControl"]',
-            'section[data-testid="stSidebar"] + div button',
-        ];
-        var btn = null;
-        for (var i = 0; i < selectors.length; i++) {
-            btn = document.querySelector(selectors[i]);
-            if (btn) break;
+        // Find collapse/expand controls in Streamlit
+        var sidebar = document.querySelector('[data-testid="stSidebar"]');
+        var collapsedControl = document.querySelector('[data-testid="collapsedControl"]');
+        
+        // Try clicking Streamlit's native toggle buttons
+        var nativeBtn = null;
+        
+        if (sidebar && sidebar.getBoundingClientRect().width > 50) {
+            // Sidebar is currently open, look for close button inside sidebar
+            nativeBtn = sidebar.querySelector('button[aria-label*="Close"], button[aria-label*="Collapse"], [data-testid="collapsedControl"] button');
+        } else if (collapsedControl) {
+            // Sidebar is closed, look for open button
+            nativeBtn = collapsedControl.querySelector('button, [data-testid="collapsedControl"] button');
         }
-        if (btn) {
-            btn.click();
-        } else {
-            // Fallback: toggle sidebar visibility directly
-            var sidebar = document.querySelector('[data-testid="stSidebar"]');
-            if (sidebar) {
-                var current = sidebar.style.display;
-                sidebar.style.display = (current === 'none') ? 'flex' : 'none';
+        
+        if (!nativeBtn) {
+            // Try fallback selectors
+            var selectors = [
+                '[data-testid="collapsedControl"] button',
+                '[data-testid="collapsedControl"]',
+                'button[kind="header"][aria-label*="sidebar"]',
+                'button[aria-label*="Collapse"]',
+                'button[aria-label*="Expand"]'
+            ];
+            for (var i = 0; i < selectors.length; i++) {
+                var btn = document.querySelector(selectors[i]);
+                if (btn) {
+                    nativeBtn = btn;
+                    break;
+                }
             }
         }
-        // Update arrow direction
-        var floatBtn = document.getElementById('sidebar-toggle-btn');
-        if (floatBtn) {
-            floatBtn.innerHTML = floatBtn.innerHTML.includes('›') ? '‹' : '›';
+        
+        if (nativeBtn) {
+            nativeBtn.click();
+        } else {
+            // Hard fallback: toggle CSS directly if Streamlit UI is completely unresponsive/hidden
+            if (sidebar) {
+                if (sidebar.style.display === 'none' || sidebar.style.width === '0px') {
+                    sidebar.style.display = 'flex';
+                    sidebar.style.width = '';
+                } else {
+                    sidebar.style.display = 'none';
+                }
+            }
         }
+        
+        // Update arrow direction based on expected state
+        setTimeout(syncArrow, 300);
     }
-    // Sync arrow direction with sidebar state on load
-    setTimeout(function() {
+    
+    function syncArrow() {
         var sidebar = document.querySelector('[data-testid="stSidebar"]');
         var floatBtn = document.getElementById('sidebar-toggle-btn');
         if (sidebar && floatBtn) {
             var rect = sidebar.getBoundingClientRect();
-            var isCollapsed = rect.width < 50;
+            // In Streamlit, a collapsed sidebar has width 0 (or close to 0) or is hidden/offscreen
+            var isCollapsed = rect.width < 50 || sidebar.style.display === 'none';
             floatBtn.innerHTML = isCollapsed ? '&#8250;' : '&#8249;';
         }
-    }, 800);
+    }
+    
+    // Sync arrow direction with sidebar state on load and key intervals
+    setTimeout(syncArrow, 800);
+    setInterval(syncArrow, 2000);
     </script>
     """, unsafe_allow_html=True)
 
