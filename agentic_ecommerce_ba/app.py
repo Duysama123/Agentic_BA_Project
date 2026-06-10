@@ -670,23 +670,14 @@ def main():
         width: 30px;
     }
     </style><div id="sidebar-toggle-btn" title="Toggle sidebar" onclick="toggleSidebar()">&#8250;</div><script>
-    function getTargetDocument() {
-        try {
-            if (window.parent && window.parent.document) {
-                return window.parent.document;
-            }
-        } catch(e) {}
-        return document;
-    }
     function toggleSidebar() {
-        var targetDoc = getTargetDocument();
-        var sidebar = targetDoc.querySelector('[data-testid="stSidebar"]');
-        var collapsedControl = targetDoc.querySelector('[data-testid="collapsedControl"]');
+        var sidebar = document.querySelector('[data-testid="stSidebar"]');
+        var collapsedControl = document.querySelector('[data-testid="collapsedControl"]');
         var nativeBtn = null;
         if (sidebar && Math.sign(sidebar.getBoundingClientRect().width - 50) === 1) {
             nativeBtn = sidebar.querySelector('button[aria-label*="Close"], button[aria-label*="Collapse"], [data-testid="collapsedControl"] button');
         } else if (collapsedControl) {
-            nativeBtn = collapsedControl.querySelector('button, [data-testid="collapsedControl"] button');
+            nativeBtn = collapsedControl.querySelector('button');
         }
         if (!nativeBtn) {
             var selectors = [
@@ -697,7 +688,7 @@ def main():
                 'button[aria-label*="Expand"]'
             ];
             for (var sel of selectors) {
-                var btn = targetDoc.querySelector(sel);
+                var btn = document.querySelector(sel);
                 if (btn) {
                     nativeBtn = btn;
                     break;
@@ -719,8 +710,7 @@ def main():
         setTimeout(syncArrow, 300);
     }
     function syncArrow() {
-        var targetDoc = getTargetDocument();
-        var sidebar = targetDoc.querySelector('[data-testid="stSidebar"]');
+        var sidebar = document.querySelector('[data-testid="stSidebar"]');
         var floatBtn = document.getElementById('sidebar-toggle-btn');
         if (sidebar && floatBtn) {
             var rect = sidebar.getBoundingClientRect();
