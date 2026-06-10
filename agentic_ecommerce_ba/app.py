@@ -627,6 +627,81 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
+    # Inject custom floating sidebar toggle button via JS
+    st.markdown("""
+    <style>
+    #sidebar-toggle-btn {
+        position: fixed;
+        top: 50%;
+        left: 0;
+        transform: translateY(-50%);
+        z-index: 9999;
+        width: 24px;
+        height: 60px;
+        background-color: #1F2937;
+        border: 1px solid #374151;
+        border-left: none;
+        border-radius: 0 10px 10px 0;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 3px 0 10px rgba(0,0,0,0.3);
+        transition: background-color 0.2s, width 0.2s;
+        color: #E5E7EB;
+        font-size: 14px;
+        user-select: none;
+    }
+    #sidebar-toggle-btn:hover {
+        background-color: #374151;
+        width: 30px;
+    }
+    </style>
+    <div id="sidebar-toggle-btn" title="Toggle sidebar" onclick="toggleSidebar()">&#8250;</div>
+    <script>
+    function toggleSidebar() {
+        // Try multiple selectors Streamlit uses for the sidebar button
+        var selectors = [
+            '[data-testid="collapsedControl"] button',
+            '[data-testid="collapsedControl"]',
+            'button[kind="header"][aria-label*="sidebar"]',
+            '[data-testid="stSidebarCollapsedControl"]',
+            'section[data-testid="stSidebar"] + div button',
+        ];
+        var btn = null;
+        for (var i = 0; i < selectors.length; i++) {
+            btn = document.querySelector(selectors[i]);
+            if (btn) break;
+        }
+        if (btn) {
+            btn.click();
+        } else {
+            // Fallback: toggle sidebar visibility directly
+            var sidebar = document.querySelector('[data-testid="stSidebar"]');
+            if (sidebar) {
+                var current = sidebar.style.display;
+                sidebar.style.display = (current === 'none') ? 'flex' : 'none';
+            }
+        }
+        // Update arrow direction
+        var floatBtn = document.getElementById('sidebar-toggle-btn');
+        if (floatBtn) {
+            floatBtn.innerHTML = floatBtn.innerHTML.includes('›') ? '‹' : '›';
+        }
+    }
+    // Sync arrow direction with sidebar state on load
+    setTimeout(function() {
+        var sidebar = document.querySelector('[data-testid="stSidebar"]');
+        var floatBtn = document.getElementById('sidebar-toggle-btn');
+        if (sidebar && floatBtn) {
+            var rect = sidebar.getBoundingClientRect();
+            var isCollapsed = rect.width < 50;
+            floatBtn.innerHTML = isCollapsed ? '&#8250;' : '&#8249;';
+        }
+    }, 800);
+    </script>
+    """, unsafe_allow_html=True)
+
     if 'db' not in st.session_state:
         st.session_state.db = DatabaseManager()
     if 'user' not in st.session_state:
