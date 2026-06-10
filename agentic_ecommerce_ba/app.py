@@ -691,7 +691,8 @@ def main():
         
         var nativeBtn = null;
         
-        if (sidebar && sidebar.getBoundingClientRect().width > 50) {
+        // Math.sign(width - 50) === 1 means width > 50
+        if (sidebar && Math.sign(sidebar.getBoundingClientRect().width - 50) === 1) {
             nativeBtn = sidebar.querySelector('button[aria-label*="Close"], button[aria-label*="Collapse"], [data-testid="collapsedControl"] button');
         } else if (collapsedControl) {
             nativeBtn = collapsedControl.querySelector('button, [data-testid="collapsedControl"] button');
@@ -705,8 +706,8 @@ def main():
                 'button[aria-label*="Collapse"]',
                 'button[aria-label*="Expand"]'
             ];
-            for (var i = 0; i < selectors.length; i++) {
-                var btn = targetDoc.querySelector(selectors[i]);
+            for (var sel of selectors) {
+                var btn = targetDoc.querySelector(sel);
                 if (btn) {
                     nativeBtn = btn;
                     break;
@@ -737,7 +738,8 @@ def main():
         var floatBtn = document.getElementById('sidebar-toggle-btn');
         if (sidebar && floatBtn) {
             var rect = sidebar.getBoundingClientRect();
-            var isCollapsed = rect.width < 50 || sidebar.style.display === 'none';
+            // Math.sign(width - 50) === -1 means width < 50
+            var isCollapsed = (Math.sign(rect.width - 50) === -1) || sidebar.style.display === 'none';
             floatBtn.innerHTML = isCollapsed ? '&#8250;' : '&#8249;';
         }
     }
