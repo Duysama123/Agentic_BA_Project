@@ -627,7 +627,11 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
-    # Inject custom floating sidebar toggle button via JS
+    if not st.session_state.user:
+        login_ui()
+        return
+
+    # Inject custom floating sidebar toggle button via JS only when logged in
     st.markdown("""
     <style>
     #sidebar-toggle-btn {
@@ -635,7 +639,7 @@ def main():
         top: 50%;
         left: 0;
         transform: translateY(-50%);
-        z-index: 99999;
+        z-index: 999999;
         width: 24px;
         height: 60px;
         background-color: #1F2937;
@@ -660,24 +664,31 @@ def main():
     </style>
     <div id="sidebar-toggle-btn" title="Toggle sidebar" onclick="toggleSidebar()">&#8250;</div>
     <script>
+    function getTargetDocument() {
+        try {
+            if (window.parent && window.parent.document) {
+                return window.parent.document;
+            }
+        } catch(e) {}
+        return document;
+    }
+
     function toggleSidebar() {
-        // Find collapse/expand controls in Streamlit
-        var sidebar = document.querySelector('[data-testid="stSidebar"]');
-        var collapsedControl = document.querySelector('[data-testid="collapsedControl"]');
+        var targetDoc = getTargetDocument();
         
-        // Try clicking Streamlit's native toggle buttons
+        // Find collapse/expand controls in Streamlit
+        var sidebar = targetDoc.querySelector('[data-testid="stSidebar"]');
+        var collapsedControl = targetDoc.querySelector('[data-testid="collapsedControl"]');
+        
         var nativeBtn = null;
         
         if (sidebar && sidebar.getBoundingClientRect().width > 50) {
-            // Sidebar is currently open, look for close button inside sidebar
             nativeBtn = sidebar.querySelector('button[aria-label*="Close"], button[aria-label*="Collapse"], [data-testid="collapsedControl"] button');
         } else if (collapsedControl) {
-            // Sidebar is closed, look for open button
             nativeBtn = collapsedControl.querySelector('button, [data-testid="collapsedControl"] button');
         }
         
         if (!nativeBtn) {
-            // Try fallback selectors
             var selectors = [
                 '[data-testid="collapsedControl"] button',
                 '[data-testid="collapsedControl"]',
@@ -686,7 +697,7 @@ def main():
                 'button[aria-label*="Expand"]'
             ];
             for (var i = 0; i < selectors.length; i++) {
-                var btn = document.querySelector(selectors[i]);
+                var btn = targetDoc.querySelector(selectors[i]);
                 if (btn) {
                     nativeBtn = btn;
                     break;
@@ -697,7 +708,7 @@ def main():
         if (nativeBtn) {
             nativeBtn.click();
         } else {
-            // Hard fallback: toggle CSS directly if Streamlit UI is completely unresponsive/hidden
+            // Hard fallback
             if (sidebar) {
                 if (sidebar.style.display === 'none' || sidebar.style.width === '0px') {
                     sidebar.style.display = 'flex';
@@ -708,39 +719,24 @@ def main():
             }
         }
         
-        // Update arrow direction based on expected state
         setTimeout(syncArrow, 300);
     }
     
     function syncArrow() {
-        var sidebar = document.querySelector('[data-testid="stSidebar"]');
+        var targetDoc = getTargetDocument();
+        var sidebar = targetDoc.querySelector('[data-testid="stSidebar"]');
         var floatBtn = document.getElementById('sidebar-toggle-btn');
         if (sidebar && floatBtn) {
             var rect = sidebar.getBoundingClientRect();
-            // In Streamlit, a collapsed sidebar has width 0 (or close to 0) or is hidden/offscreen
             var isCollapsed = rect.width < 50 || sidebar.style.display === 'none';
             floatBtn.innerHTML = isCollapsed ? '&#8250;' : '&#8249;';
         }
     }
     
-    // Sync arrow direction with sidebar state on load and key intervals
     setTimeout(syncArrow, 800);
     setInterval(syncArrow, 2000);
     </script>
     """, unsafe_allow_html=True)
-
-    if 'db' not in st.session_state:
-        st.session_state.db = DatabaseManager()
-    if 'user' not in st.session_state:
-        st.session_state.user = None
-    if 'orig_gemini_api_key' not in st.session_state:
-        st.session_state.orig_gemini_api_key = os.getenv("GEMINI_API_KEY", "")
-    if 'orig_gemini_api_keys' not in st.session_state:
-        st.session_state.orig_gemini_api_keys = os.getenv("GEMINI_API_KEYS", "")
-
-    if not st.session_state.user:
-        login_ui()
-        return
 
     # init_language_selector()  # Removed: English only
     
