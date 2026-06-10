@@ -24,8 +24,9 @@ def render_mermaid(code: str):
         clean = clean[:-3]
     clean = clean.strip()
     
-    import html as html_module
-    escaped = html_module.escape(clean)
+    # Use base64 to safely pass Mermaid code without HTML escaping issues
+    import base64 as b64mod
+    b64_code = b64mod.b64encode(clean.encode('utf-8')).decode('ascii')
     
     html_template = """
     <!DOCTYPE html>
@@ -65,8 +66,12 @@ def render_mermaid(code: str):
                 transform-origin: 0 0; position: absolute; top: 0; left: 0;
                 min-width: 100%;
             }
-            .mermaid { font-family: 'Segoe UI', Arial, sans-serif; }
-            .mermaid svg { display: block; width: 100%; height: auto; }
+            #diagram-wrap svg { display: block; max-width: none; height: auto; }
+            .error-box {
+                padding: 16px; margin: 16px; background: #fef2f2; border: 1px solid #fecaca;
+                border-radius: 8px; color: #991b1b; font-size: 13px;
+            }
+            .error-box pre { white-space: pre-wrap; font-size: 12px; margin-top: 8px; color: #374151; }
         </style>
     </head>
     <body>
@@ -80,12 +85,22 @@ def render_mermaid(code: str):
             <span class="hint">Scroll to zoom &middot; Drag to pan</span>
         </div>
         <div id="viewport">
-            <div id="diagram-wrap">
-                <pre class="mermaid">MERMAID_PLACEHOLDER</pre>
-            </div>
+            <div id="diagram-wrap"></div>
         </div>
         <script>
-            mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+            mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' });
+
+            // Decode base64 Mermaid code — avoids all HTML escaping problems
+            var mermaidCode = atob('B64_PLACEHOLDER');
+
+            mermaid.render('mermaid-svg-output', mermaidCode).then(function(result) {
+                document.getElementById('diagram-wrap').innerHTML = result.svg;
+                setTimeout(resetView, 300);
+            }).catch(function(err) {
+                document.getElementById('diagram-wrap').innerHTML =
+                    '<div class="error-box"><strong>Mermaid Render Error:</strong> ' + err +
+                    '<pre>' + mermaidCode + '</pre></div>';
+            });
 
             let scale = 1, panX = 0, panY = 0;
             let dragging = false, startX, startY;
@@ -98,22 +113,19 @@ def render_mermaid(code: str):
                 lbl.textContent = Math.round(scale * 100) + '%';
             }
 
-            // Mouse wheel zoom
             vp.addEventListener('wheel', function(e) {
                 e.preventDefault();
-                const rect = vp.getBoundingClientRect();
-                const mx = e.clientX - rect.left;
-                const my = e.clientY - rect.top;
-                const factor = e.deltaY < 0 ? 1.12 : 0.89;
-                const newScale = Math.min(Math.max(scale * factor, 0.15), 5);
-                // Zoom toward cursor
+                var rect = vp.getBoundingClientRect();
+                var mx = e.clientX - rect.left;
+                var my = e.clientY - rect.top;
+                var factor = e.deltaY < 0 ? 1.12 : 0.89;
+                var newScale = Math.min(Math.max(scale * factor, 0.15), 5);
                 panX = mx - (mx - panX) * (newScale / scale);
                 panY = my - (my - panY) * (newScale / scale);
                 scale = newScale;
                 applyTransform();
             }, { passive: false });
 
-            // Drag to pan
             vp.addEventListener('mousedown', function(e) {
                 dragging = true; startX = e.clientX - panX; startY = e.clientY - panY;
             });
@@ -128,29 +140,23 @@ def render_mermaid(code: str):
             function zoomOut() { scale = Math.max(scale * 0.8, 0.15); applyTransform(); }
             function resetView() {
                 scale = 1; panX = 0; panY = 0; applyTransform();
-                // Auto-fit: wait for SVG to be ready then center
                 setTimeout(function() {
                     var svg = wrap.querySelector('svg');
                     if (svg) {
                         var svgW = svg.getBoundingClientRect().width / scale;
                         var vpW = vp.clientWidth;
-                        if (svgW > vpW) {
-                            scale = vpW / svgW * 0.95;
-                        }
+                        if (svgW > vpW) { scale = vpW / svgW * 0.95; }
                         panX = Math.max(0, (vpW - svgW * scale) / 2);
                         panY = 10;
                         applyTransform();
                     }
                 }, 100);
             }
-
-            // Auto-fit on first render
-            setTimeout(resetView, 800);
         </script>
     </body>
     </html>
     """
-    html_content = html_template.replace("MERMAID_PLACEHOLDER", escaped)
+    html_content = html_template.replace("B64_PLACEHOLDER", b64_code)
     
     components.html(html_content, height=560, scrolling=False)
 
