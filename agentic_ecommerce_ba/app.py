@@ -434,6 +434,47 @@ def main():
         background-color: #b91c1c !important;
     }
     
+    /* ===== Sidebar Toggle Button — always visible ===== */
+    /* The expand/collapse arrow button must always be shown */
+    [data-testid="collapsedControl"] {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        background-color: #1F2937 !important;
+        border: 1px solid #374151 !important;
+        border-radius: 0 8px 8px 0 !important;
+        color: #E5E7EB !important;
+        width: 28px !important;
+        height: 64px !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        position: fixed !important;
+        top: 50vh !important;
+        left: 0 !important;
+        z-index: 999 !important;
+        box-shadow: 2px 0 8px rgba(0,0,0,0.25) !important;
+        transition: background-color 0.2s !important;
+    }
+    [data-testid="collapsedControl"]:hover {
+        background-color: #374151 !important;
+    }
+    [data-testid="collapsedControl"] svg {
+        color: #E5E7EB !important;
+        fill: #E5E7EB !important;
+        width: 16px !important;
+        height: 16px !important;
+    }
+    /* Also ensure the in-sidebar collapse button is visible */
+    [data-testid="stSidebar"] [data-testid="collapsedControl"] {
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+    }
+
     /* Primary Button (New Project) */
     [data-testid="stSidebar"] .stButton > button[kind="primary"] {
         background-color: #4F46E5 !important; /* Indigo blue */
