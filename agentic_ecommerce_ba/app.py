@@ -438,15 +438,14 @@ def main():
     [data-testid="collapsedControl"] {
         opacity: 0 !important;
         position: fixed !important;
-        left: -100px !important;
+        left: 0 !important;
+        top: 0 !important;
         width: 1px !important;
         height: 1px !important;
         overflow: hidden !important;
     }
-    [data-testid="stSidebar"] button[aria-label*="Collapse"],
-    [data-testid="stSidebar"] button[aria-label*="Close"],
-    [data-testid="stSidebar"] button[aria-label*="collapse"],
-    [data-testid="stSidebar"] button[aria-label*="close"] {
+    /* Hide the close/collapse button inside the sidebar using language-independent selector */
+    [data-testid="stSidebar"] button:not([data-testid="stSidebarUserContent"] button) {
         display: none !important;
     }
 
@@ -615,19 +614,30 @@ def main():
         login_ui()
         return
 
-    # Inject auto-expand JS to force sidebar open if collapsed (e.g. remembered in localStorage)
+    # Inject auto-expand JS to force sidebar open if collapsed (e.g. remembered in localStorage or manually clicked)
     st.markdown("""<script>
     function forceSidebarOpen() {
-        var expandBtn = document.querySelector('[data-testid="collapsedControl"] button');
-        if (expandBtn) {
-            expandBtn.click();
+        var selectors = [
+            '[data-testid="collapsedControl"] button',
+            'button[aria-label*="Expand"]',
+            'button[aria-label*="expand"]',
+            'button[aria-label*="Mở rộng"]',
+            'button[aria-label*="mở rộng"]',
+            '[data-testid="collapsedControl"]'
+        ];
+        for (var sel of selectors) {
+            var btn = document.querySelector(sel);
+            if (btn) {
+                btn.click();
+                break;
+            }
         }
     }
     setTimeout(forceSidebarOpen, 100);
     setTimeout(forceSidebarOpen, 300);
     setTimeout(forceSidebarOpen, 500);
     setTimeout(forceSidebarOpen, 1000);
-    setInterval(forceSidebarOpen, 2000);
+    setInterval(forceSidebarOpen, 1000);
     </script>""", unsafe_allow_html=True)
 
     # init_language_selector()  # Removed: English only
