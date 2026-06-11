@@ -41,7 +41,7 @@ qual_dir = os.path.abspath("sample_files/qualitative_test")
 sample_options = {
     "sample2.png (Payment Details Form)": "sample2.png",
     "sample3.png (Checkout Summary Screen)": "sample3.png",
-    "sample11.png (User Profile Settings Form)": "sample11.png"
+    "sample11.png (User Registration Form)": "sample11.png"
 }
 
 st.sidebar.subheader("Select Input Wireframe")
@@ -143,35 +143,34 @@ with col2:
             ]
         else: # sample11.png
             srs_content = (
-                "# Software Requirements Specification (SRS) - User Profile Form (Baseline)\n\n"
+                "# Software Requirements Specification (SRS) - User Registration Form (Baseline)\n\n"
                 "## 1. Introduction\n"
-                "This document describes the functional requirements for the User Profile Form.\n\n"
+                "This document describes the functional requirements for the User Registration Form.\n\n"
                 "## 2. User Interface Components\n"
-                "- First Name (text input)\n"
-                "- Last Name (text input)\n"
+                "- Full Name (text input)\n"
                 "- Email Address (text input)\n"
                 "- Password (text input)\n"
                 "- Confirm Password (text input)\n"
-                "- Save Changes (button)\n"
-                "- Cancel (button)\n\n"
+                "- Create Account (button)\n"
+                "- Already have an account? Sign In (link)\n\n"
                 "## 3. Functional Requirements\n"
-                "- The system shall allow users to input first name, last name, email, and password.\n"
-                "- Clicking 'Save Changes' updates the user profile.\n"
-                "- Clicking 'Cancel' discards changes and goes back.\n\n"
+                "- The system shall allow users to input full name, email, password, and confirm password.\n"
+                "- Clicking 'Create Account' submits the registration form.\n"
+                "- Clicking 'Sign In' redirects the user to the login screen.\n\n"
                 "## 4. User Flow Diagram (Mermaid.js Baseline)\n"
                 "```mermaid\n"
                 "graph TD\n"
                 "    Start --> InputFields\n"
-                "    InputFields --> SaveChanges\n"
-                "    SaveChanges --> UpdateProfile\n"
+                "    InputFields --> CreateAccount\n"
+                "    CreateAccount --> CompleteRegistration\n"
                 "```"
             )
             defects_list = [
-                "❌ **Missing Password Strength Validation:** No requirements for minimum length, special characters, or uppercase letters.",
+                "❌ **Missing Password Strength Validation:** No requirements for minimum length, special characters, or complexity constraints.",
                 "❌ **No Password Confirmation Matching:** Failed to state the logic validation checking that 'Password' and 'Confirm Password' must match.",
-                "❌ **No Email Format & Duplication Check:** Fails to specify regex email format validation or checking if the email is already registered.",
-                "❌ **No Session Validation:** Fails to enforce authorization checking (whether the user must be logged in to access this edit profile screen).",
-                "❌ **Shallow Diagram Logic:** The flowchart is overly simplistic, omitting input validation check paths or password matching logic gates."
+                "❌ **No Email Format & Duplication Check:** Fails to specify regex email format validation or checking if the email is already registered in the database.",
+                "❌ **No Credentials Encryption Policy:** Omitted password hashing or security compliance (e.g. encrypting credentials in transit/at rest).",
+                "❌ **Shallow Diagram Logic:** The flowchart is overly simplistic, omitting input validation check paths, duplicate email gates, or error-redirect paths."
             ]
 
         # Live overrides if selected
