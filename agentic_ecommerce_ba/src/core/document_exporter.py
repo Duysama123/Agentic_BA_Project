@@ -43,41 +43,59 @@ def generate_srs_docx(ba_data_json: str, template_path: str, output_path: str, d
             from docxtpl import InlineImage
             from docx.shared import Inches
             
-            def get_kroki_url(mermaid_text: str) -> str:
+            def fetch_diagram_image(mermaid_text: str) -> bytes:
                 mermaid_text = mermaid_text.strip()
                 if mermaid_text.startswith("```mermaid"): mermaid_text = mermaid_text[10:]
                 elif mermaid_text.startswith("```"): mermaid_text = mermaid_text[3:]
                 if mermaid_text.endswith("```"): mermaid_text = mermaid_text[:-3]
                 mermaid_text = mermaid_text.strip()
-                compressed = zlib.compress(mermaid_text.encode('utf-8'), 9)
-                encoded = base64.urlsafe_b64encode(compressed).decode('ascii')
-                return f"https://kroki.io/mermaid/png/{encoded}"
+                
+                # 1. Try mermaid.ink
+                try:
+                    encoded = base64.urlsafe_b64encode(mermaid_text.encode('utf-8')).decode('ascii')
+                    r = requests.get(f"https://mermaid.ink/img/{encoded}", timeout=5)
+                    if r.status_code == 200:
+                        return r.content
+                except Exception as e:
+                    print("mermaid.ink fetch failed, trying kroki...", e)
+                    
+                # 2. Try kroki.io as fallback
+                try:
+                    compressed = zlib.compress(mermaid_text.encode('utf-8'), 9)
+                    encoded = base64.urlsafe_b64encode(compressed).decode('ascii')
+                    r = requests.get(f"https://kroki.io/mermaid/png/{encoded}", timeout=5)
+                    if r.status_code == 200:
+                        return r.content
+                except Exception as e:
+                    print("Kroki fetch failed too:", e)
+                    
+                return None
 
             fc_code = diag_data.get("flowchart_diagram", "")
             if fc_code and 'flowchart_image' in template_vars:
-                try:
-                    r = requests.get(get_kroki_url(fc_code), timeout=3)
-                    if r.status_code == 200:
+                img_data = fetch_diagram_image(fc_code)
+                if img_data:
+                    try:
                         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-                        tmp.write(r.content)
+                        tmp.write(img_data)
                         tmp.close()
                         temp_files.append(tmp.name)
                         data['flowchart_image'] = InlineImage(doc, tmp.name, width=Inches(6.0))
-                except Exception as e:
-                    print("Failed to fetch flowchart image:", e)
+                    except Exception as e:
+                        print("Failed to embed flowchart image:", e)
 
             seq_code = diag_data.get("sequence_diagram", "")
             if seq_code and 'sequence_image' in template_vars:
-                try:
-                    r = requests.get(get_kroki_url(seq_code), timeout=3)
-                    if r.status_code == 200:
+                img_data = fetch_diagram_image(seq_code)
+                if img_data:
+                    try:
                         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-                        tmp.write(r.content)
+                        tmp.write(img_data)
                         tmp.close()
                         temp_files.append(tmp.name)
                         data['sequence_image'] = InlineImage(doc, tmp.name, width=Inches(6.0))
-                except Exception as e:
-                    print("Failed to fetch sequence image:", e)
+                    except Exception as e:
+                        print("Failed to embed sequence image:", e)
 
     # Process vision data (mockup and components)
     if vision_data_json:
@@ -158,45 +176,63 @@ def append_extras_to_docx(docx_path: str, diagram_data_json: str = None, vision_
             doc.add_page_break()
             doc.add_heading('System Diagrams (Auto-Generated)', level=1)
 
-            def get_kroki_url(mermaid_text: str) -> str:
-                if mermaid_text.startswith("```mermaid"):
-                    mermaid_text = mermaid_text[10:]
-                if mermaid_text.endswith("```"):
-                    mermaid_text = mermaid_text[:-3]
+            def fetch_diagram_image(mermaid_text: str) -> bytes:
                 mermaid_text = mermaid_text.strip()
-                compressed = zlib.compress(mermaid_text.encode('utf-8'), 9)
-                encoded = base64.urlsafe_b64encode(compressed).decode('ascii')
-                return f"https://kroki.io/mermaid/png/{encoded}"
+                if mermaid_text.startswith("```mermaid"): mermaid_text = mermaid_text[10:]
+                elif mermaid_text.startswith("```"): mermaid_text = mermaid_text[3:]
+                if mermaid_text.endswith("```"): mermaid_text = mermaid_text[:-3]
+                mermaid_text = mermaid_text.strip()
+                
+                # 1. Try mermaid.ink
+                try:
+                    encoded = base64.urlsafe_b64encode(mermaid_text.encode('utf-8')).decode('ascii')
+                    r = requests.get(f"https://mermaid.ink/img/{encoded}", timeout=5)
+                    if r.status_code == 200:
+                        return r.content
+                except Exception as e:
+                    print("mermaid.ink fetch failed, trying kroki...", e)
+                    
+                # 2. Try kroki.io as fallback
+                try:
+                    compressed = zlib.compress(mermaid_text.encode('utf-8'), 9)
+                    encoded = base64.urlsafe_b64encode(compressed).decode('ascii')
+                    r = requests.get(f"https://kroki.io/mermaid/png/{encoded}", timeout=5)
+                    if r.status_code == 200:
+                        return r.content
+                except Exception as e:
+                    print("Kroki fetch failed too:", e)
+                    
+                return None
 
             # Fetch and add Flowchart
             fc_code = diag_data.get("flowchart_diagram", "")
             if fc_code:
-                try:
-                    r = requests.get(get_kroki_url(fc_code), timeout=3)
-                    if r.status_code == 200:
+                img_data = fetch_diagram_image(fc_code)
+                if img_data:
+                    try:
                         with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                            tmp.write(r.content)
+                            tmp.write(img_data)
                             tmp_path = tmp.name
                         doc.add_heading('Flowchart Diagram', level=2)
                         doc.add_picture(tmp_path, width=Inches(6.0))
                         os.unlink(tmp_path)
-                except Exception as e:
-                    print("Failed to add flowchart image:", e)
+                    except Exception as e:
+                        print("Failed to add flowchart image:", e)
 
             # Fetch and add Sequence
             seq_code = diag_data.get("sequence_diagram", "")
             if seq_code:
-                try:
-                    r = requests.get(get_kroki_url(seq_code), timeout=3)
-                    if r.status_code == 200:
+                img_data = fetch_diagram_image(seq_code)
+                if img_data:
+                    try:
                         with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                            tmp.write(r.content)
+                            tmp.write(img_data)
                             tmp_path = tmp.name
                         doc.add_heading('Sequence Diagram', level=2)
                         doc.add_picture(tmp_path, width=Inches(6.0))
                         os.unlink(tmp_path)
-                except Exception as e:
-                    print("Failed to add sequence image:", e)
+                    except Exception as e:
+                        print("Failed to add sequence image:", e)
 
             explanation = diag_data.get("diagram_explanation", "")
             if explanation:
