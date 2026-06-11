@@ -93,37 +93,73 @@ class QAAgent(BaseAgent):
         """
         domain_checks = []
         
-        # 1. Core static e-commerce policies (DDD invariants)
-        static_policies = [
-            {
-                "id": "DC-01",
-                "name": "Cart Inventory Validation",
-                "message": "Verify that cart checkout validates item stock availability",
-                "keywords": ["stock", "inventory", "quantity", "availab"],
-                "severity": "CRITICAL"
-            },
-            {
-                "id": "DC-02",
-                "name": "Secure Transaction Signature",
-                "message": "Ensure transaction completing uses secure checksum or digital signature validation",
-                "keywords": ["signature", "secure", "checksum", "payment gate", "hash", "secret", "payment", "idempotent", "auth"],
-                "severity": "CRITICAL"
-            },
-            {
-                "id": "DC-03",
-                "name": "Order Status Management",
-                "message": "Define explicit state transitions (e.g. pending, paid, failed, success)",
-                "keywords": ["status", "pending", "paid", "success", "failed", "completed"],
-                "severity": "HIGH"
-            },
-            {
-                "id": "DC-04",
-                "name": "Return/Refund Constraints",
-                "message": "Handle refund or cancellation window conditions",
-                "keywords": ["refund", "cancel", "return", "policy", "day"],
-                "severity": "MEDIUM"
-            }
-        ]
+        # Determine page context to apply correct domain policies
+        srs_context_str = str(srs_dict).lower()
+        is_auth_page = any(word in srs_context_str for word in ['register', 'login', 'account', 'auth', 'đăng ký', 'đăng nhập'])
+        
+        if is_auth_page:
+            static_policies = [
+                {
+                    "id": "DC-01",
+                    "name": "Password Security Policy",
+                    "message": "Verify that user password meets minimum complexity requirements (length, special characters)",
+                    "keywords": ["password", "mật khẩu", "complex", "length", "ký tự", "secure", "hash"],
+                    "severity": "CRITICAL"
+                },
+                {
+                    "id": "DC-02",
+                    "name": "Email Uniqueness Validation",
+                    "message": "Ensure the system checks if the email is already registered before creating an account",
+                    "keywords": ["email", "unique", "tồn tại", "trùng", "already", "exist", "duplicate"],
+                    "severity": "CRITICAL"
+                },
+                {
+                    "id": "DC-03",
+                    "name": "Account Verification (OTP/Email)",
+                    "message": "Define account activation flow via OTP or verification email",
+                    "keywords": ["otp", "verify", "xác thực", "activate", "kích hoạt", "mã", "code"],
+                    "severity": "HIGH"
+                },
+                {
+                    "id": "DC-04",
+                    "name": "Data Privacy & TOS Consent",
+                    "message": "User must accept Terms of Service and Privacy Policy before registration",
+                    "keywords": ["terms", "privacy", "tos", "điều khoản", "chính sách", "đồng ý", "accept", "consent"],
+                    "severity": "MEDIUM"
+                }
+            ]
+        else:
+            # Core static e-commerce policies (Checkout/Cart invariants)
+            static_policies = [
+                {
+                    "id": "DC-01",
+                    "name": "Cart Inventory Validation",
+                    "message": "Verify that cart checkout validates item stock availability",
+                    "keywords": ["stock", "inventory", "quantity", "availab"],
+                    "severity": "CRITICAL"
+                },
+                {
+                    "id": "DC-02",
+                    "name": "Secure Transaction Signature",
+                    "message": "Ensure transaction completing uses secure checksum or digital signature validation",
+                    "keywords": ["signature", "secure", "checksum", "payment gate", "hash", "secret", "payment", "idempotent", "auth"],
+                    "severity": "CRITICAL"
+                },
+                {
+                    "id": "DC-03",
+                    "name": "Order Status Management",
+                    "message": "Define explicit state transitions (e.g. pending, paid, failed, success)",
+                    "keywords": ["status", "pending", "paid", "success", "failed", "completed"],
+                    "severity": "HIGH"
+                },
+                {
+                    "id": "DC-04",
+                    "name": "Return/Refund Constraints",
+                    "message": "Handle refund or cancellation window conditions",
+                    "keywords": ["refund", "cancel", "return", "policy", "day"],
+                    "severity": "MEDIUM"
+                }
+            ]
         
         # Concatenate all SRS text for keyword checking
         reqs = srs_dict.get('functional_requirements') or []
