@@ -1881,15 +1881,17 @@ def main():
                     if summary_data:
                         st.dataframe(pd.DataFrame(summary_data), use_container_width=True, hide_index=True)
                     
-                    # Total pipeline time
-                    start = st.session_state.get('pipeline_start_time')
-                    if start:
-                        total = round(_time.time() - start, 2)
-                    else:
-                        total = round(sum([v for v in timings.values() if isinstance(v, (int, float))]), 2)
-                        
                     agent_time = sum(timings.get(k, 0) for k in ['vision', 'ba', 'diagrams'])
                     human_time = sum(timings.get(k, 0) for k in ['hitl1', 'hitl2'])
+                    
+                    # Total pipeline time: sum of agent processing and human review times
+                    # We avoid summing everything in timings because it contains UNIX timestamps (e.g., 'vision_start')
+                    # which causes massively inflated totals. If currently running and not finished, we show elapsed.
+                    pipeline_finished = st.session_state.pipeline_state == 'COMPLETED'
+                    if not pipeline_finished and st.session_state.get('pipeline_start_time'):
+                        total = round(_time.time() - st.session_state.pipeline_start_time, 2)
+                    else:
+                        total = agent_time + human_time
                     
                     c1, c2, c3 = st.columns(3)
                     with c1:
