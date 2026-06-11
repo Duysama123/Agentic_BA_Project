@@ -1823,19 +1823,13 @@ def main():
                             c1.metric("Structural Errors", f"{struct_err}")
                             
                             # Additional derived metrics matching Section 4.5
-                            consistency_score = getattr(qa, 'entity_consistency_score', None)
-                            if consistency_score is None or consistency_score < 90:
-                                # Adjust to ensure >= 90% for demo/report purposes
-                                consistency_score = max(90, 100 - (consist_warn * 0.5))
+                            consistency_score = getattr(qa, 'entity_consistency_score', 0.0)
                                 
                             total_policies = len(domain_checks)
                             passed_policies = sum(1 for c in domain_checks if getattr(c, 'passed', False))
                             compliance_rate = getattr(qa, 'domain_policy_compliance_rate', (passed_policies / total_policies * 100) if total_policies > 0 else 100.0)
                             
                             edge_case_density = getattr(qa, 'edge_case_density', 0.0)
-                            if edge_case_density < 1.0:
-                                # Boost edge case density to meet target >= 1.0
-                                edge_case_density = round(1.0 + (edge_case_density * 0.5), 2)
                             
                             c2.metric("Entity Consistency", f"{int(consistency_score)}%")
                             c3.metric("Policy Compliance", f"{int(compliance_rate)}%")

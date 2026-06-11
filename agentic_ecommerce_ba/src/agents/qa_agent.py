@@ -247,7 +247,17 @@ class QAAgent(BaseAgent):
         # 2. Consistency Validation (Layer 2)
         consist_checks = self._consistency_check(v_dict, s_dict)
         warnings_count = len(consist_checks)
-        entity_consistency_score = max(0, 100 - (warnings_count * 10))
+        
+        # Calculate total UI components (elements + page_name)
+        elements = v_dict.get('elements', [])
+        total_ui_components = len(elements)
+        if v_dict.get('page_name'):
+            total_ui_components += 1
+            
+        if total_ui_components > 0:
+            entity_consistency_score = max(0.0, ((total_ui_components - warnings_count) / total_ui_components) * 100.0)
+        else:
+            entity_consistency_score = 100.0
         
         # 3. Domain Policy Compliance Check (Layer 3)
         domain_checks, domain_policy_compliance_rate, critical_policy_violated = self._policy_compliance_check(s_dict, rag_context)
