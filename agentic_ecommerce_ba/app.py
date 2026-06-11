@@ -88,19 +88,42 @@ def render_mermaid(code: str):
             <div id="diagram-wrap"></div>
         </div>
         <script>
-            mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' });
+            mermaid.initialize({
+                startOnLoad: false,
+                theme: 'default',
+                securityLevel: 'loose',
+                flowchart: {
+                    curve: 'linear',
+                    useMaxWidth: false,
+                    htmlLabels: true
+                },
+                sequence: {
+                    useMaxWidth: false,
+                    showSequenceNumbers: false
+                }
+            });
 
             // Decode base64 Mermaid code — avoids all HTML escaping problems
             var mermaidCode = atob('B64_PLACEHOLDER');
 
-            mermaid.render('mermaid-svg-output', mermaidCode).then(function(result) {
-                document.getElementById('diagram-wrap').innerHTML = result.svg;
-                setTimeout(resetView, 300);
-            }).catch(function(err) {
-                document.getElementById('diagram-wrap').innerHTML =
-                    '<div class="error-box"><strong>Mermaid Render Error:</strong> ' + err +
-                    '<pre>' + mermaidCode + '</pre></div>';
-            });
+            function tryRender() {
+                // Wait until the container has a visible width (not hidden in a tab)
+                if (document.documentElement.clientWidth === 0 || window.innerWidth === 0) {
+                    setTimeout(tryRender, 100);
+                    return;
+                }
+
+                mermaid.render('mermaid-svg-output', mermaidCode).then(function(result) {
+                    document.getElementById('diagram-wrap').innerHTML = result.svg;
+                    setTimeout(resetView, 300);
+                }).catch(function(err) {
+                    document.getElementById('diagram-wrap').innerHTML =
+                        '<div class="error-box"><strong>Mermaid Render Error:</strong> ' + err +
+                        '<pre>' + mermaidCode + '</pre></div>';
+                });
+            }
+
+            tryRender();
 
             let scale = 1, panX = 0, panY = 0;
             let dragging = false, startX, startY;
