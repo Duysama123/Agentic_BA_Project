@@ -392,42 +392,6 @@ def main():
     
     header[data-testid="stHeader"] {
         background: transparent !important;
-        pointer-events: none !important;
-    }
-    header[data-testid="stHeader"] * {
-        pointer-events: auto !important;
-    }
-    
-    /* Style the expand button container when sidebar is collapsed */
-    [data-testid="collapsedControl"] {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        background-color: #111827 !important; /* Deep dark blue to match sidebar */
-        border-radius: 0 8px 8px 0 !important;
-        box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.15) !important;
-        z-index: 999999 !important;
-        transition: all 0.3s ease !important;
-        top: 10px !important;
-        left: 0 !important;
-        width: 40px !important;
-        height: 40px !important;
-        pointer-events: auto !important;
-    }
-    [data-testid="collapsedControl"] button {
-        color: #FFFFFF !important;
-        background: transparent !important;
-        border: none !important;
-        width: 100% !important;
-        height: 100% !important;
-    }
-    [data-testid="collapsedControl"] svg {
-        fill: #FFFFFF !important;
-        color: #FFFFFF !important;
-    }
-    [data-testid="collapsedControl"]:hover {
-        background-color: #1F2937 !important;
-        transform: scale(1.05);
     }
     
     /* === Modern Sidebar (CodingLab style) === */
