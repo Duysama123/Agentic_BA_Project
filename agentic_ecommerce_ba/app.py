@@ -1830,10 +1830,21 @@ def main():
                             domain_checks = getattr(qa, 'domain_checks', [])
                             failed_domain = sum(1 for c in domain_checks if not getattr(c, 'passed', False))
                             
-                            c1, c2, c3 = st.columns(3)
+                            c1, c2, c3, c4, c5, c6 = st.columns(6)
                             c1.metric("Structural Errors", f"{struct_err}")
                             c2.metric("Consistency Warnings", f"{consist_warn}")
                             c3.metric("Failed Domain Checks", f"{failed_domain}")
+                            
+                            # Additional derived metrics matching Section 4.5
+                            consistency_score = getattr(qa, 'entity_consistency_score', max(0, 100 - (consist_warn * 10)))
+                            total_policies = len(domain_checks)
+                            passed_policies = sum(1 for c in domain_checks if getattr(c, 'passed', False))
+                            compliance_rate = getattr(qa, 'domain_policy_compliance_rate', (passed_policies / total_policies * 100) if total_policies > 0 else 100.0)
+                            edge_case_density = getattr(qa, 'edge_case_density', 0.0)
+                            
+                            c4.metric("Consistency Score", f"{int(consistency_score)}%")
+                            c5.metric("Policy Compliance", f"{int(compliance_rate)}%")
+                            c6.metric("Edge-Case Density", f"{edge_case_density}")
                             
                             decision = getattr(qa, 'decision', None)
                             d_reason = getattr(decision, 'reason', 'No issues found. Diagram is robust and aligns with business rules.') if decision else 'No issues found.'
