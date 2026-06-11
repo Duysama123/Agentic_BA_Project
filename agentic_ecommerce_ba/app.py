@@ -307,6 +307,34 @@ def extract_diagram_details(diagram):
     return flowchart_code, sequence_code, explanation
 
 
+@st.cache_data(show_spinner=False, ttl=3600)
+def generate_cached_docs(ba_j, diag_j, vision_j, img_bytes):
+    from src.core.document_exporter import generate_srs_docx, convert_docx_to_pdf
+    import tempfile, os, traceback
+    out_dir = tempfile.mkdtemp()
+    docx_path = os.path.join(out_dir, "SRS_Document.docx")
+    pdf_path = os.path.join(out_dir, "SRS_Document.pdf")
+    template_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "srs_template-ieee.docx"))
+    
+    try:
+        if os.path.exists(template_path):
+            generate_srs_docx(ba_j, template_path, docx_path, diag_j, vision_j, img_bytes)
+            
+            with open(docx_path, "rb") as f:
+                docx_bytes = f.read()
+                
+            pdf_bytes = None
+            if convert_docx_to_pdf(docx_path, pdf_path):
+                with open(pdf_path, "rb") as f:
+                    pdf_bytes = f.read()
+            
+            return docx_bytes, pdf_bytes, None
+        else:
+            return None, None, "Template file not found."
+    except Exception as e:
+        return None, None, f"{e}\n{traceback.format_exc()}"
+
+
 
 def login_ui():
     st.markdown("<h1 class='hero-title'>Specify.ai</h1>", unsafe_allow_html=True)
@@ -1700,33 +1728,7 @@ def main():
             
             st.success("✅ Workflow Completed Successfully!")
             
-            # ---- CACHED DOCUMENT EXPORT ----
-            @st.cache_data(show_spinner=False, ttl=3600)
-            def generate_cached_docs(_ba_j, _diag_j, _vision_j, _img_bytes):
-                from src.core.document_exporter import generate_srs_docx, convert_docx_to_pdf
-                import tempfile, os, traceback
-                out_dir = tempfile.mkdtemp()
-                docx_path = os.path.join(out_dir, "SRS_Document.docx")
-                pdf_path = os.path.join(out_dir, "SRS_Document.pdf")
-                template_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "srs_template-ieee.docx"))
-                
-                try:
-                    if os.path.exists(template_path):
-                        generate_srs_docx(_ba_j, template_path, docx_path, _diag_j, _vision_j, _img_bytes)
-                        
-                        with open(docx_path, "rb") as f:
-                            docx_bytes = f.read()
-                            
-                        pdf_bytes = None
-                        if convert_docx_to_pdf(docx_path, pdf_path):
-                            with open(pdf_path, "rb") as f:
-                                pdf_bytes = f.read()
-                        
-                        return docx_bytes, pdf_bytes, None
-                    else:
-                        return None, None, "Template file not found."
-                except Exception as e:
-                    return None, None, f"{e}\n{traceback.format_exc()}"
+
             
             # Tabbed results view
             tab_export, tab_diagrams, tab_summary = st.tabs(["📄 SRS Export", "🧩 Diagrams", "📊 Pipeline Summary"])
