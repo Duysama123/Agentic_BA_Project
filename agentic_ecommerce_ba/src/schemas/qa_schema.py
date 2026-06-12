@@ -28,7 +28,7 @@ class QAAuditReport(BaseModel):
     decision: QADecision = Field(default=None)
     feedback_for_agents: str = Field(default="")
     structural_errors_count: int = Field(default=0, description="Số lượng lỗi cấu trúc")
-    entity_consistency_score: int = Field(default=100, description="Điểm nhất quán thực thể (%)")
+    entity_consistency_score: float = Field(default=100.0, description="Điểm nhất quán thực thể (%)")
     domain_policy_compliance_rate: float = Field(default=100.0, description="Tỷ lệ tuân thủ chính sách (%)")
     edge_case_density: float = Field(default=0.0, description="Mật độ trường hợp ngoại lệ")
 
