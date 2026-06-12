@@ -1433,19 +1433,10 @@ def main():
                 if st.button("🔄 Retry", type="primary", use_container_width=True):
                     st.rerun()
             elif not qa_approved:
-                # QA Retry Logic
-                st.session_state.qa_retry_count += 1
-                if st.session_state.qa_retry_count < 3:
-                    st.warning(f"QA Agent detected issues. Auto-retrying ({st.session_state.qa_retry_count}/3)...")
-                    time.sleep(2)
-                    st.session_state.cache_diagram = None
-                    st.session_state.cache_qa = None
-                    st.rerun()
-                else:
-                    st.error("QA Agent detected issues continuously. Escalating to human review.")
-                    time.sleep(2)
-                    st.session_state.pipeline_state = 'HITL_QA'
-                    st.rerun()
+                st.error("QA Agent detected issues. Escalating to human review.")
+                time.sleep(2)
+                st.session_state.pipeline_state = 'HITL_QA'
+                st.rerun()
             else:
                 # Capture diagrams step timing
                 diag_start = st.session_state.step_timings.get('diagrams_start', _time.time())
@@ -1649,7 +1640,7 @@ def main():
                 st.session_state.cache_qa = None
                 if reviewer_notes:
                     st.session_state.user_notes += f"\n[QA Feedback]: {reviewer_notes}"
-                st.session_state.pipeline_state = 'PROCESSING_DIAGRAMS'
+                st.session_state.pipeline_state = 'HITL_BA'
                 st.rerun()
         with col2:
             btn_text = "✅ Approve & Finish" if d_action == 'approve' else "✅ Override & approve"
