@@ -60,8 +60,8 @@ def run_quantitative_evaluation():
         print(f"[ERROR] quantitative_test directory not found at: {test_dir}")
         return
 
-    # Find all images (supporting .jpg and .jpeg)
-    image_extensions = ["*.jpg", "*.jpeg"]
+    # Find all images (supporting .jpg, .jpeg, and .png)
+    image_extensions = ["*.jpg", "*.jpeg", "*.png"]
     image_paths = []
     for ext in image_extensions:
         image_paths.extend(glob.glob(os.path.join(test_dir, ext)))

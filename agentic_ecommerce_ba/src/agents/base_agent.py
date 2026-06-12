@@ -85,7 +85,7 @@ class BaseAgent:
         
         for model_idx, current_model in enumerate(models_to_try):
             keys = Config.get_api_keys()
-            max_retries = max(len(keys), 2)
+            max_retries = max(len(keys) * 2, 5) # Tăng số lần thử lại lên 5 lần để đối phó 15 RPM
             
             if model_idx > 0:
                 logger.warning(f"[{self.role_name}] 🔄 Model {models_to_try[model_idx-1]} quá tải! Chuyển sang dự phòng: {current_model}")
@@ -168,7 +168,7 @@ class BaseAgent:
                     )
                     
                     if is_retryable and attempt < max_retries - 1:
-                        wait_time = (attempt + 1) * 3
+                        wait_time = 20 # Chờ 20s để hồi RPM thay vì 3s
                         logger.warning(f"[{self.role_name}] Key ...{key_suffix} lỗi ({error_str[:50]}...). Đổi key, chờ {wait_time}s...")
                         _time.sleep(wait_time)
                         continue
@@ -210,7 +210,7 @@ class BaseAgent:
         
         for model_idx, current_model in enumerate(models_to_try):
             keys = Config.get_api_keys()
-            max_retries = max(len(keys), 2)
+            max_retries = max(len(keys) * 2, 5) # Tăng số lần thử lại lên 5 lần để đối phó 15 RPM
             
             if model_idx > 0:
                 logger.warning(f"[{self.role_name}] 🔄 Streaming fallback to: {current_model}")
@@ -286,7 +286,7 @@ class BaseAgent:
                     )
                     
                     if is_retryable and attempt < max_retries - 1:
-                        wait_time = (attempt + 1) * 3
+                        wait_time = 20 # Chờ 20s để hồi RPM thay vì 3s
                         logger.warning(f"[{self.role_name}] Stream key ...{key_suffix} error ({error_str[:50]}...). Rotating, wait {wait_time}s...")
                         _time.sleep(wait_time)
                         continue
