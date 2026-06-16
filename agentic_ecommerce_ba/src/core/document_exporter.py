@@ -9,8 +9,51 @@ def generate_srs_docx(ba_data_json: str, template_path: str, output_path: str, d
     If vision_data_json/image_bytes are provided, integrates them.
     Returns the path to the generated DOCX.
     """
-    data = json.loads(ba_data_json)
+    data = json.loads(ba_data_json) if ba_data_json else {}
+    if not isinstance(data, dict):
+        data = {}
     
+    # Ensure all IEEE SRS template variables exist to prevent jinja2 UndefinedError
+    if 'system_name' not in data or not data['system_name']:
+        data['system_name'] = "Specify.ai System"
+    if 'version' not in data or not data['version']:
+        data['version'] = "1.0.0"
+        
+    if 'introduction' not in data or not isinstance(data['introduction'], dict):
+        data['introduction'] = {
+            "purpose": "",
+            "glossary": [],
+            "intended_audience": "",
+            "project_scope": ""
+        }
+    else:
+        intro = data['introduction']
+        for k in ["purpose", "intended_audience", "project_scope"]:
+            if k not in intro: intro[k] = ""
+        if "glossary" not in intro or not isinstance(intro["glossary"], list):
+            intro["glossary"] = []
+
+    if 'overall_description' not in data or not isinstance(data['overall_description'], dict):
+        data['overall_description'] = {
+            "product_perspective": "",
+            "product_functions": [],
+            "user_classes": [],
+            "operating_environment": "",
+            "design_constraints": [],
+            "assumptions_dependencies": []
+        }
+    else:
+        od = data['overall_description']
+        for k in ["product_perspective", "operating_environment"]:
+            if k not in od: od[k] = ""
+        for k in ["product_functions", "user_classes", "design_constraints", "assumptions_dependencies"]:
+            if k not in od or not isinstance(od[k], list):
+                od[k] = []
+
+    for k in ["functional_requirements", "non_functional_requirements", "business_rules"]:
+        if k not in data or not isinstance(data[k], list):
+            data[k] = []
+            
     from datetime import datetime
     if 'date_created' not in data:
         data['date_created'] = datetime.now().strftime("%B %d, %Y")

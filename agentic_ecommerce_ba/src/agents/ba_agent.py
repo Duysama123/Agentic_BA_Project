@@ -13,15 +13,16 @@ class BAAgent(BaseAgent):
     """
     
     def __init__(self):
-        super().__init__(role_name="BA Agent", model_name="gemini-2.5-flash")
+        super().__init__(role_name="BA Agent", model_name="gemini-1.5-flash-8b")
 
     def generate_requirements(self, ui_analysis_json: str, business_rules_context: str = "") -> SRSDocument:
         """Sinh ra tài liệu SRSDocument chuẩn IEEE 830 bằng Tiếng Anh."""
         
         system_prompt = (
-            "You are an Expert Business Analyst. Your task is to write a comprehensive Software Requirements Specification (SRS) "
+            "You are an Expert Business Analyst. Your task is to write a Software Requirements Specification (SRS) "
             "following the IEEE 830 standard based on provided UI Analysis and Business Rules Context.\n"
-            "CRITICAL INSTRUCTION: You MUST output all content in ENGLISH. Do not use Vietnamese or any other language."
+            "CRITICAL INSTRUCTION: You MUST output all content in ENGLISH. Do not use Vietnamese or any other language.\n"
+            "OPTIMIZATION: Keep descriptions, flows, and details EXTREMELY BRIEF (1-2 sentences max). Omit non-essential steps to save tokens and execution time."
         )
         
         user_prompt = f"### UI COMPONENTS DETAIL (EXTRACTED BY VISION AI):\n{ui_analysis_json}\n\n"
@@ -33,7 +34,7 @@ class BAAgent(BaseAgent):
         user_prompt += (
             "Decompose this limited data into a professional comprehensive Software Requirements Specification document. "
             "Ensure you fill out every section of the required IEEE structure. "
-            "For non-functional requirements and business rules, automatically append standard domain knowledge if missing."
+            "Make your response as brief and concise as possible to optimize latency."
         )
         
         result = self.call_llm(
@@ -48,9 +49,10 @@ class BAAgent(BaseAgent):
         """Streaming variant — yields chunks to stream_callback for live UI rendering."""
         
         system_prompt = (
-            "You are an Expert Business Analyst. Your task is to write a comprehensive Software Requirements Specification (SRS) "
+            "You are an Expert Business Analyst. Your task is to write a Software Requirements Specification (SRS) "
             "following the IEEE 830 standard based on provided UI Analysis and Business Rules Context.\n"
-            "CRITICAL INSTRUCTION: You MUST output all content in ENGLISH. Do not use Vietnamese or any other language."
+            "CRITICAL INSTRUCTION: You MUST output all content in ENGLISH. Do not use Vietnamese or any other language.\n"
+            "OPTIMIZATION: Keep descriptions, flows, and details EXTREMELY BRIEF (1-2 sentences max). Omit non-essential steps to save tokens and execution time."
         )
         
         user_prompt = f"### UI COMPONENTS DETAIL (EXTRACTED BY VISION AI):\n{ui_analysis_json}\n\n"
@@ -62,7 +64,7 @@ class BAAgent(BaseAgent):
         user_prompt += (
             "Decompose this limited data into a professional comprehensive Software Requirements Specification document. "
             "Ensure you fill out every section of the required IEEE structure. "
-            "For non-functional requirements and business rules, automatically append standard domain knowledge if missing."
+            "Make your response as brief and concise as possible to optimize latency."
         )
         
         result = self.call_llm_stream(

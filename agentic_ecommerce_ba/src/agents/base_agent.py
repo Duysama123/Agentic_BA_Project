@@ -34,10 +34,13 @@ class BaseAgent:
     Tích hợp Round-Robin Key Pool + Auto-Retry để chống chọi với API Quota Limit.
     """
     
-    def __init__(self, role_name: str, model_name: str = "gemini-2.5-flash"):
+    def __init__(self, role_name: str, model_name: str = "gemini-2.5-flash", force_model: bool = False):
         self.role_name = role_name
         # Sử dụng mô hình ghi đè từ Config/môi trường nếu có, ngược lại dùng mặc định của Agent
-        self.model_name = os.getenv("GEMINI_MODEL", model_name)
+        if force_model:
+            self.model_name = model_name
+        else:
+            self.model_name = os.getenv("GEMINI_MODEL", model_name)
         
         # Khởi tạo Client với key đầu tiên khả dụng tại thời điểm khởi tạo
         keys = Config.get_api_keys()
@@ -50,13 +53,13 @@ class BaseAgent:
 
     # Bảng Model dự phòng: nếu model chính bận, tụt xuống model phụ 
     FALLBACK_MODELS = {
-        "gemini-2.5-flash": "gemini-2.0-flash",
-        "gemini-2.5-pro": "gemini-2.0-flash",
-        "gemini-2.0-flash": "gemini-flash-latest",
-        "gemini-2.0-pro-exp-02-05": "gemini-flash-latest",
-        "gemini-1.5-pro": "gemini-flash-latest",
-        "gemini-1.5-flash": "gemini-flash-latest",
-        "gemini-flash-latest": "gemini-flash-latest",
+        "gemini-2.5-flash": "gemini-1.5-flash",
+        "gemini-2.5-pro": "gemini-2.5-flash",
+        "gemini-2.0-flash": "gemini-2.5-flash",
+        "gemini-2.0-pro-exp-02-05": "gemini-2.5-flash",
+        "gemini-1.5-pro": "gemini-2.5-flash",
+        "gemini-1.5-flash": "gemini-2.5-flash",
+        "gemini-flash-latest": "gemini-2.5-flash",
     }
 
 
@@ -75,7 +78,7 @@ class BaseAgent:
         models_to_try = [self.model_name]
         
         # Extended fallback chain to handle 503 high demand
-        fallback_chain = ["gemini-2.5-flash", "gemini-2.0-flash"]
+        fallback_chain = ["gemini-2.5-flash", "gemini-1.5-flash"]
         for f in fallback_chain:
             if f not in models_to_try:
                 models_to_try.append(f)
@@ -85,7 +88,10 @@ class BaseAgent:
         
         for model_idx, current_model in enumerate(models_to_try):
             keys = Config.get_api_keys()
-            max_retries = max(len(keys) * 2, 5) # Tăng số lần thử lại lên 5 lần để đối phó 15 RPM
+            num_keys = len(keys)
+            # Thử mỗi key 1 lần + thêm 1 retry nữa = tối đa num_keys + 1
+            max_retries = num_keys + 1
+            exhausted_keys = set()  # Track key nào đã bị 429
             
             if model_idx > 0:
                 logger.warning(f"[{self.role_name}] 🔄 Model {models_to_try[model_idx-1]} quá tải! Chuyển sang dự phòng: {current_model}")
@@ -160,15 +166,22 @@ class BaseAgent:
                 except Exception as e:
                     last_error = e
                     error_str = str(e)
+                    is_rate_limit = "429" in error_str or "RESOURCE_EXHAUSTED" in error_str
                     is_retryable = (
-                        "429" in error_str or "503" in error_str or 
-                        "RESOURCE_EXHAUSTED" in error_str or "UNAVAILABLE" in error_str or
+                        is_rate_limit or "503" in error_str or "UNAVAILABLE" in error_str or
                         "403" in error_str or "PERMISSION_DENIED" in error_str or
                         "API key not valid" in error_str
                     )
                     
+                    if is_rate_limit:
+                        exhausted_keys.add(key_suffix)
+                        # Nếu tất cả key đều bị 429 → chuyển model dự phòng ngay
+                        if len(exhausted_keys) >= num_keys and model_idx < len(models_to_try) - 1:
+                            logger.warning(f"[{self.role_name}] Tất cả {num_keys} key đều bị rate-limit cho {current_model}. Chuyển model dự phòng ngay!")
+                            break
+                    
                     if is_retryable and attempt < max_retries - 1:
-                        wait_time = 20 # Chờ 20s để hồi RPM thay vì 3s
+                        wait_time = 5  # Chờ 5s rồi đổi key (thay vì 20s)
                         logger.warning(f"[{self.role_name}] Key ...{key_suffix} lỗi ({error_str[:50]}...). Đổi key, chờ {wait_time}s...")
                         _time.sleep(wait_time)
                         continue
@@ -200,7 +213,7 @@ class BaseAgent:
         models_to_try = [self.model_name]
         
         # Extended fallback chain to handle 503 high demand
-        fallback_chain = ["gemini-2.5-flash", "gemini-2.0-flash"]
+        fallback_chain = ["gemini-2.5-flash", "gemini-1.5-flash"]
         for f in fallback_chain:
             if f not in models_to_try:
                 models_to_try.append(f)
@@ -210,7 +223,9 @@ class BaseAgent:
         
         for model_idx, current_model in enumerate(models_to_try):
             keys = Config.get_api_keys()
-            max_retries = max(len(keys) * 2, 5) # Tăng số lần thử lại lên 5 lần để đối phó 15 RPM
+            num_keys = len(keys)
+            max_retries = num_keys + 1
+            exhausted_keys = set()
             
             if model_idx > 0:
                 logger.warning(f"[{self.role_name}] 🔄 Streaming fallback to: {current_model}")
@@ -278,15 +293,21 @@ class BaseAgent:
                 except Exception as e:
                     last_error = e
                     error_str = str(e)
+                    is_rate_limit = "429" in error_str or "RESOURCE_EXHAUSTED" in error_str
                     is_retryable = (
-                        "429" in error_str or "503" in error_str or 
-                        "RESOURCE_EXHAUSTED" in error_str or "UNAVAILABLE" in error_str or
+                        is_rate_limit or "503" in error_str or "UNAVAILABLE" in error_str or
                         "403" in error_str or "PERMISSION_DENIED" in error_str or
                         "API key not valid" in error_str
                     )
                     
+                    if is_rate_limit:
+                        exhausted_keys.add(key_suffix)
+                        if len(exhausted_keys) >= num_keys and model_idx < len(models_to_try) - 1:
+                            logger.warning(f"[{self.role_name}] Tất cả {num_keys} key đều bị rate-limit cho {current_model}. Chuyển model dự phòng ngay!")
+                            break
+                    
                     if is_retryable and attempt < max_retries - 1:
-                        wait_time = 20 # Chờ 20s để hồi RPM thay vì 3s
+                        wait_time = 5
                         logger.warning(f"[{self.role_name}] Stream key ...{key_suffix} error ({error_str[:50]}...). Rotating, wait {wait_time}s...")
                         _time.sleep(wait_time)
                         continue

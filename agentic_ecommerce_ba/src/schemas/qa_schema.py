@@ -31,4 +31,5 @@ class QAAuditReport(BaseModel):
     entity_consistency_score: float = Field(default=100.0, description="Điểm nhất quán thực thể (%)")
     domain_policy_compliance_rate: float = Field(default=100.0, description="Tỷ lệ tuân thủ chính sách (%)")
     edge_case_density: float = Field(default=0.0, description="Mật độ trường hợp ngoại lệ")
+    rag_faithfulness_score: float = Field(default=100.0, description="Độ trung thực của RAG (%)")
 
