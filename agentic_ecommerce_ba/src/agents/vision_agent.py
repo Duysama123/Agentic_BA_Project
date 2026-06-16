@@ -86,7 +86,7 @@ class VisionAgent(BaseAgent):
     """
 
     def __init__(self):
-        super().__init__(role_name="Vision Agent", model_name="gemini-1.5-flash-8b")
+        super().__init__(role_name="Vision Agent", model_name="gemini-2.0-flash")
 
     def analyze_wireframe(self, image_path: str, user_notes: str = "") -> WireframeAnalysis:
         """
@@ -99,9 +99,8 @@ class VisionAgent(BaseAgent):
 
         img = Image.open(image_path)
         
-        # Layer 1 Token Saving: Resize image to max 512x512 to aggressively save Vision Tokens
-        # This reduces the number of tokens Gemini charges for image input significantly.
-        img.thumbnail((512, 512), Image.Resampling.LANCZOS)
+        # Layer 1 Token Saving: Resize image to max 1024x1024 to preserve resolution for detailed OCR
+        img.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
 
         # ── STAGE 1: YOLO Local Detection ──────────────────────────
         yolo_result = run_yolo_detection(image_path)

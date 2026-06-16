@@ -13,7 +13,7 @@ class BAAgent(BaseAgent):
     """
     
     def __init__(self):
-        super().__init__(role_name="BA Agent", model_name="gemini-1.5-flash-8b")
+        super().__init__(role_name="BA Agent", model_name="gemini-2.5-flash")
 
     def generate_requirements(self, ui_analysis_json: str, business_rules_context: str = "") -> SRSDocument:
         """Sinh ra tài liệu SRSDocument chuẩn IEEE 830 bằng Tiếng Anh."""
@@ -21,8 +21,7 @@ class BAAgent(BaseAgent):
         system_prompt = (
             "You are an Expert Business Analyst. Your task is to write a Software Requirements Specification (SRS) "
             "following the IEEE 830 standard based on provided UI Analysis and Business Rules Context.\n"
-            "CRITICAL INSTRUCTION: You MUST output all content in ENGLISH. Do not use Vietnamese or any other language.\n"
-            "OPTIMIZATION: Keep descriptions, flows, and details EXTREMELY BRIEF (1-2 sentences max). Omit non-essential steps to save tokens and execution time."
+            "CRITICAL INSTRUCTION: You MUST output all content in ENGLISH. Do not use Vietnamese or any other language."
         )
         
         user_prompt = f"### UI COMPONENTS DETAIL (EXTRACTED BY VISION AI):\n{ui_analysis_json}\n\n"
@@ -33,8 +32,7 @@ class BAAgent(BaseAgent):
             
         user_prompt += (
             "Decompose this limited data into a professional comprehensive Software Requirements Specification document. "
-            "Ensure you fill out every section of the required IEEE structure. "
-            "Make your response as brief and concise as possible to optimize latency."
+            "Ensure you fill out every section of the required IEEE structure."
         )
         
         result = self.call_llm(
@@ -51,8 +49,7 @@ class BAAgent(BaseAgent):
         system_prompt = (
             "You are an Expert Business Analyst. Your task is to write a Software Requirements Specification (SRS) "
             "following the IEEE 830 standard based on provided UI Analysis and Business Rules Context.\n"
-            "CRITICAL INSTRUCTION: You MUST output all content in ENGLISH. Do not use Vietnamese or any other language.\n"
-            "OPTIMIZATION: Keep descriptions, flows, and details EXTREMELY BRIEF (1-2 sentences max). Omit non-essential steps to save tokens and execution time."
+            "CRITICAL INSTRUCTION: You MUST output all content in ENGLISH. Do not use Vietnamese or any other language."
         )
         
         user_prompt = f"### UI COMPONENTS DETAIL (EXTRACTED BY VISION AI):\n{ui_analysis_json}\n\n"
@@ -63,8 +60,7 @@ class BAAgent(BaseAgent):
             
         user_prompt += (
             "Decompose this limited data into a professional comprehensive Software Requirements Specification document. "
-            "Ensure you fill out every section of the required IEEE structure. "
-            "Make your response as brief and concise as possible to optimize latency."
+            "Ensure you fill out every section of the required IEEE structure."
         )
         
         result = self.call_llm_stream(
