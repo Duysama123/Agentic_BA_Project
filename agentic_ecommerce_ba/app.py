@@ -1697,7 +1697,7 @@ def main():
         with c2:
             with st.container(border=True):
                 score_consist = getattr(qa, 'entity_consistency_score', 100 if consist_warn == 0 else max(0, 100 - consist_warn * 10))
-                st.metric("Entity Consistency", f"{score_consist}%")
+                st.metric("Entity Consistency", f"{score_consist:.1f}%")
                 if score_consist < 100:
                     st.markdown(f'<span style="background-color: #fee2e2; color: #dc2626; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: 600;">{consist_warn} Warnings</span>', unsafe_allow_html=True)
                 else:
@@ -1809,11 +1809,47 @@ def main():
             if st.button("🔄 Fix failed agents", use_container_width=True):
                 spent = round(_time.time() - st.session_state.hitl_start_time, 2)
                 st.session_state.db.log_human_review(st.session_state.get('eval_session_id'), "HITL-3", "reject", {}, {}, spent)
+                
+                # Retrieve the QA feedback details
+                qa_report = st.session_state.cache_qa
+                feedback_parts = []
+                if qa_report:
+                    struct_errors = [c.message for c in getattr(qa_report, 'structural_checks', []) if getattr(c, 'type', '') == 'error']
+                    if struct_errors:
+                        feedback_parts.append("Structural Errors:\n" + "\n".join(f"- {err}" for err in struct_errors))
+                    
+                    warnings = [c.message for c in getattr(qa_report, 'consistency_checks', [])]
+                    if warnings:
+                        feedback_parts.append("Consistency Warnings:\n" + "\n".join(f"- {w}" for w in warnings))
+                        
+                    violations = [c.message for c in getattr(qa_report, 'domain_checks', []) if not getattr(c, 'passed', True)]
+                    if violations:
+                        feedback_parts.append("Domain Policy Violations:\n" + "\n".join(f"- {v}" for v in violations))
+                
+                if reviewer_notes:
+                    feedback_parts.append(f"Reviewer Notes:\n{reviewer_notes}")
+                    st.session_state.user_notes += f"\n[QA Feedback]: {reviewer_notes}"
+                
+                qa_feedback_str = "\n\n".join(feedback_parts) if feedback_parts else "Please refine the requirements based on general quality gates."
+                
+                with st.spinner("BA Agent is refining the SRS automatically based on QA feedback..."):
+                    try:
+                        vision_j = safe_model_dump_json(st.session_state.cache_vision)
+                        previous_srs_json = safe_model_dump_json(st.session_state.cache_ba)
+                        
+                        refined_ba = st.session_state.ba_agent.refine_requirements(
+                            previous_srs_json=previous_srs_json,
+                            qa_feedback=qa_feedback_str,
+                            ui_analysis_json=vision_j
+                        )
+                        st.session_state.cache_ba = refined_ba
+                        st.toast("BA Agent successfully refined the SRS!", icon="✅")
+                    except Exception as e:
+                        st.error(f"Failed to auto-refine: {e}")
+                
                 st.session_state.qa_retry_count = 0
                 st.session_state.cache_diagram = None
                 st.session_state.cache_qa = None
-                if reviewer_notes:
-                    st.session_state.user_notes += f"\n[QA Feedback]: {reviewer_notes}"
                 st.session_state.pipeline_state = 'HITL_BA'
                 st.rerun()
         with col2:
