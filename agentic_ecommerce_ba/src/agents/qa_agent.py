@@ -318,20 +318,29 @@ class QAAgent(BaseAgent):
         # 5. RAG Faithfulness Score (Layer 5)
         rag_faithfulness_score = self._calculate_rag_faithfulness(s_dict, rag_context, rng)
 
-        # Determine Decision based on Quality Gate Rules
-        if structural_errors_count > 0 or critical_policy_violated:
+        # Determine Decision based on Quality Gate Rules (Targets: SE=0, ECS>=90%, DPCR=100%, ECD>=0.7, Faithfulness>=90%)
+        reasons = []
+        if structural_errors_count > 0:
+            reasons.append(f"Structural Errors detected: {structural_errors_count}")
+        if entity_consistency_score < 90.0:
+            reasons.append(f"Low Entity Consistency: {entity_consistency_score:.1f}% < 90% target")
+        if domain_policy_compliance_rate < 100.0:
+            reasons.append(f"Incomplete Domain Policy Compliance: {domain_policy_compliance_rate:.1f}% < 100% target")
+        if edge_case_density < 0.7:
+            reasons.append(f"Low Edge-Case Density: {edge_case_density:.2f} < 0.7 target")
+        
+        has_rag = bool(rag_context and rag_context.strip())
+        if has_rag and rag_faithfulness_score < 90.0:
+            reasons.append(f"Low RAG Faithfulness: {rag_faithfulness_score:.1f}% < 90% target")
+
+        if reasons:
             is_approved = False
             action = "retry_ba"
-            reasons = []
-            if structural_errors_count > 0:
-                reasons.append(f"{structural_errors_count} structural errors detected")
-            if critical_policy_violated:
-                reasons.append("critical domain policies violated")
-            reason = "Failed: " + ", ".join(reasons) + "."
+            reason = "Failed Quality Gate: " + ", ".join(reasons) + "."
         else:
             is_approved = True
             action = "approve"
-            reason = "Passed: All structural checks and critical domain policies satisfied."
+            reason = "Passed: All quality gate targets satisfied (SE=0, ECS>=90%, DPCR=100%, ECD>=0.7, Faithfulness>=90%)."
 
         decision = QADecision(action=action, reason=reason)
         
