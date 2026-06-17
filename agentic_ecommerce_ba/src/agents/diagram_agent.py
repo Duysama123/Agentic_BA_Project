@@ -120,6 +120,10 @@ def sanitize_mermaid(mermaid_code: str) -> str:
                    (content_stripped.startswith("'") and content_stripped.endswith("'")):
                     return full_match
                 
+                # Guard against matching partial quotes inside nested structures
+                if content.count('"') % 2 != 0 or content.count("'") % 2 != 0:
+                    return full_match
+                
                 # Find the opening and closing symbols directly from the match text
                 id_len = len(node_id)
                 content_start_idx = full_match.find(content, id_len)
