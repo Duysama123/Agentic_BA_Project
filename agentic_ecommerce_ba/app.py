@@ -1778,13 +1778,20 @@ def main():
             for c in struct_checks:
                 c_msg = getattr(c, 'message', '')
                 c_path = getattr(c, 'path', '')
+                c_type = getattr(c, 'type', 'error')
+                
+                icon = "❌" if c_type == "error" else "⚠️"
+                color = "#dc2626" if c_type == "error" else "#d97706"
+                bg = "#fee2e2" if c_type == "error" else "#fef3c7"
+                badge_text = "Error" if c_type == "error" else "Warning"
+                
                 st.markdown(
                     f'<div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">'
                     f'  <div style="display: flex; align-items: center; gap: 12px;">'
-                    f'    <div style="font-size: 16px;">❌</div>'
+                    f'    <div style="font-size: 16px;">{icon}</div>'
                     f'    <div><span style="font-weight: 600; color: #111827;">{c_path}</span> — <span style="color: #4b5563;">{c_msg}</span></div>'
                     f'  </div>'
-                    f'  <div style="background-color: #fee2e2; color: #dc2626; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 600;">Error</div>'
+                    f'  <div style="background-color: {bg}; color: {color}; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 600;">{badge_text}</div>'
                     f'</div>',
                     unsafe_allow_html=True
                 )
@@ -1847,7 +1854,7 @@ def main():
                     except Exception as e:
                         st.error(f"Failed to auto-refine: {e}")
                 
-                st.session_state.qa_retry_count = 0
+                st.session_state.qa_retry_count += 1
                 st.session_state.cache_diagram = None
                 st.session_state.cache_qa = None
                 st.session_state.pipeline_state = 'HITL_BA'
