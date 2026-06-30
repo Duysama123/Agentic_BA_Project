@@ -60,15 +60,46 @@ class QAAgent(BaseAgent):
         # Convert the entire SRS dictionary to a JSON string for comprehensive searching
         combined_text = json.dumps(srs_dict).lower()
         
+        # Helper function to clean a string (removes all non-alphanumeric characters)
+        def clean_str(s: str) -> str:
+            return re.sub(r'[^a-z0-9]', '', s.lower())
+            
+        clean_combined = clean_str(combined_text)
+        
         # Check if all UI elements are referenced somewhere in requirements (by label or ID)
         elements = vision_dict.get('elements') or []
         for el in elements:
             el_label = (el.get('label') or '').lower() if isinstance(el, dict) else (getattr(el, 'label', None) or '').lower()
             el_id = (el.get('id') or '').lower() if isinstance(el, dict) else (getattr(el, 'id', None) or '').lower()
+            el_type = (el.get('type') or '').lower() if isinstance(el, dict) else (getattr(el, 'type', None) or '').lower()
             
-            # Match is successful if either the label (length > 3) or the ID is found in the SRS
+            # 1. Skip non-functional element types by default (e.g. image, text_label) to align with actual BA practices
+            if el_type in ['image', 'text_label']:
+                continue
+                
+            # 2. Check exact matching in combined text
             label_matched = bool(el_label and len(el_label) > 3 and el_label in combined_text)
             id_matched = bool(el_id and len(el_id) > 2 and el_id in combined_text)
+            
+            # 3. Check normalized alphanumeric matching (e.g., first_name -> firstname)
+            if not (label_matched or id_matched):
+                if el_label and len(clean_str(el_label)) > 3 and clean_str(el_label) in clean_combined:
+                    label_matched = True
+                if el_id and len(clean_str(el_id)) > 3 and clean_str(el_id) in clean_combined:
+                    id_matched = True
+                    
+            # 4. Check keyword-based semantic matching (for multi-word labels or ID prefixes)
+            if not (label_matched or id_matched):
+                # Clean prefix from ID (e.g. btn_checkout -> checkout, input_email -> email)
+                id_short = re.sub(r'^(btn|input|txt|select|img|lbl|dropdown|cb|rb)_', '', el_id)
+                if len(id_short) > 2 and id_short in combined_text:
+                    id_matched = True
+                
+                # Check if significant words of the label are present (e.g. "Email Address" -> "email")
+                if not id_matched and el_label:
+                    words = [clean_str(w) for w in el_label.split() if len(clean_str(w)) > 3]
+                    if words and any(w in clean_combined for w in words):
+                        label_matched = True
             
             if not (label_matched or id_matched):
                 checks.append(QAConsistencyCheck(
@@ -282,7 +313,9 @@ class QAAgent(BaseAgent):
         
         # Calculate total UI components (elements + page_name)
         elements = v_dict.get('elements', [])
-        total_ui_components = len(elements)
+        # Only count functional elements to align with the optimized consistency check
+        functional_elements = [el for el in elements if (el.get('type') or '').lower() not in ['image', 'text_label']]
+        total_ui_components = len(functional_elements)
         if v_dict.get('page_name'):
             total_ui_components += 1
             
@@ -318,10 +351,10 @@ class QAAgent(BaseAgent):
         reasons = []
         if structural_errors_count > 0:
             reasons.append(f"Structural Errors detected: {structural_errors_count}")
-        if entity_consistency_score < 80.0:
-            reasons.append(f"Low Entity Consistency: {entity_consistency_score:.1f}% < 80% target")
-        if domain_policy_compliance_rate < 90.0:
-            reasons.append(f"Incomplete Domain Policy Compliance: {domain_policy_compliance_rate:.1f}% < 90% target")
+        if entity_consistency_score < 90.0:
+            reasons.append(f"Low Entity Consistency: {entity_consistency_score:.1f}% < 90% target")
+        if domain_policy_compliance_rate < 100.0:
+            reasons.append(f"Incomplete Domain Policy Compliance: {domain_policy_compliance_rate:.1f}% < 100% target")
         if edge_case_density < 0.7:
             reasons.append(f"Low Edge-Case Density: {edge_case_density:.2f} < 0.7 target")
         
@@ -336,7 +369,7 @@ class QAAgent(BaseAgent):
         else:
             is_approved = True
             action = "approve"
-            reason = "Passed: All quality gate targets satisfied (SE=0, ECS>=80%, DPCR>=90%, ECD>=0.7, Faithfulness>=90%)."
+            reason = "Passed: All quality gate targets satisfied (SE=0, ECS>=90%, DPCR=100%, ECD>=0.7, Faithfulness>=90%)."
 
         decision = QADecision(action=action, reason=reason)
         
