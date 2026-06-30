@@ -57,27 +57,23 @@ class QAAgent(BaseAgent):
         checks = []
         page_name = (vision_dict.get('page_name') or '').lower()
         
-        reqs = srs_dict.get('functional_requirements') or []
-        req_names = [(r.get('name') or '').lower() for r in reqs]
-        req_desc = [(r.get('description') or '').lower() for r in reqs]
+        # Convert the entire SRS dictionary to a JSON string for comprehensive searching
+        combined_text = json.dumps(srs_dict).lower()
         
-        combined_text = " ".join(req_names + req_desc)
-        
-        # Simple string matching to see if the page name is mentioned in SRS
-        if page_name and len(page_name) > 3 and page_name not in combined_text:
-            checks.append(QAConsistencyCheck(
-                type="warning",
-                message=f"Screen '{vision_dict.get('page_name')}' from wireframe has no obvious matching use case in SRS"
-            ))
-        
-        # Check if all UI elements are referenced somewhere in requirements
+        # Check if all UI elements are referenced somewhere in requirements (by label or ID)
         elements = vision_dict.get('elements') or []
         for el in elements:
             el_label = (el.get('label') or '').lower() if isinstance(el, dict) else (getattr(el, 'label', None) or '').lower()
-            if el_label and len(el_label) > 3 and el_label not in combined_text:
+            el_id = (el.get('id') or '').lower() if isinstance(el, dict) else (getattr(el, 'id', None) or '').lower()
+            
+            # Match is successful if either the label (length > 3) or the ID is found in the SRS
+            label_matched = bool(el_label and len(el_label) > 3 and el_label in combined_text)
+            id_matched = bool(el_id and len(el_id) > 2 and el_id in combined_text)
+            
+            if not (label_matched or id_matched):
                 checks.append(QAConsistencyCheck(
                     type="warning",
-                    message=f"UI element '{el_label}' from wireframe not referenced in any SRS requirement"
+                    message=f"UI element '{el_label or el_id}' from wireframe not referenced in any SRS requirement"
                 ))
             
         return checks
