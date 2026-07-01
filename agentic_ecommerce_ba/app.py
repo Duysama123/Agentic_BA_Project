@@ -986,6 +986,11 @@ def main():
             f'</div>'
         )
     
+    def scroll_to_top():
+        """Inject JS to scroll browser to top before st.rerun() for smoother UX."""
+        import streamlit.components.v1 as components
+        components.html("<script>window.parent.document.querySelector('section.main').scrollTo(0, 0);</script>", height=0)
+
     PIPELINE_STEPS = [
         ("vision", "Vision Agent", "PROCESSING_VISION"),
         ("hitl1", "HITL-1 — Vision Review", "HITL_VISION"),
@@ -1264,6 +1269,7 @@ def main():
                         st.session_state.db.log_human_review(st.session_state.get('eval_session_id'), "HITL-1", "approve", {}, {}, spent)
                     except Exception: pass
                     st.session_state.pipeline_state = 'PROCESSING_BA'
+                    scroll_to_top()
                     st.rerun()
             with col2:
                 if st.button("📝 Approve (Edited)", use_container_width=True):
@@ -1291,6 +1297,7 @@ def main():
                         st.session_state.db.log_human_review(st.session_state.get('eval_session_id'), "HITL-1", "edit_approve", {}, {}, spent)
                     except Exception: pass
                     st.session_state.pipeline_state = 'PROCESSING_BA'
+                    scroll_to_top()
                     st.rerun()
             with col3:
                 if st.button("🔄 Reject & Regenerate", use_container_width=True):
@@ -1306,6 +1313,7 @@ def main():
                         except Exception as e:
                             pass
                     st.session_state.pipeline_state = 'PROCESSING_VISION'
+                    scroll_to_top()
                     st.rerun()
             
             st.caption("Tip: Edit directly in the cells and click 'Approve (Edited)'. You don't need to reject the whole thing for a minor typo.")
@@ -1497,6 +1505,7 @@ def main():
                         st.session_state.db.log_human_review(st.session_state.get('eval_session_id'), "HITL-2", "approve", {}, {}, spent)
                     except Exception: pass
                     st.session_state.pipeline_state = 'PROCESSING_DIAGRAMS'
+                    scroll_to_top()
                     st.rerun()
             with col2:
                 if st.button("📝 Approve (Edited)", use_container_width=True):
@@ -1514,11 +1523,13 @@ def main():
                         st.session_state.db.log_human_review(st.session_state.get('eval_session_id'), "HITL-2", "edit_approve", {}, {}, spent)
                     except Exception: pass
                     st.session_state.pipeline_state = 'PROCESSING_DIAGRAMS'
+                    scroll_to_top()
                     st.rerun()
             with col3:
                 if st.button("🔄 Reject & Regenerate", use_container_width=True):
                     st.session_state.cache_ba = None
                     st.session_state.pipeline_state = 'PROCESSING_BA'
+                    scroll_to_top()
                     st.rerun()
                     
             st.caption("Tip: Use the textarea to add edge cases the AI missed - then click 'Approve (Edited)' to keep the good parts and add yours.")
