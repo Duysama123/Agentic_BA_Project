@@ -334,7 +334,8 @@ class QAAgent(BaseAgent):
         for r in reqs:
             alt_flows = r.get('alternative_flows') or []
             total_alt_flows += len(alt_flows)
-        edge_case_density = total_alt_flows / total_reqs if total_reqs > 0 else 0.0
+        edge_case_density_raw = total_alt_flows / total_reqs if total_reqs > 0 else 0.0
+        edge_case_density = round(edge_case_density_raw, 1)
 
         import hashlib
         import random
