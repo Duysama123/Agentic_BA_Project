@@ -280,11 +280,13 @@ class QAAgent(BaseAgent):
             elif severity == "CRITICAL":
                 critical_policy_violated = True
                 
-        # Calculate Compliance Rate (across all static and dynamic checks)
-        total_policies = len(static_policies) + total_retrieved_policies
-        passed_policies = sum(1 for dc in domain_checks if dc.passed)
-        if total_policies > 0:
-            compliance_rate = (passed_policies / total_policies) * 100.0
+        # Calculate Compliance Rate (only CRITICAL and HIGH severity policies count toward the gate)
+        # MEDIUM severity policies are advisory recommendations and do not affect pass/fail
+        gate_policies = [dc for dc in domain_checks if dc.severity in ("CRITICAL", "HIGH")]
+        total_gate = len(gate_policies)
+        passed_gate = sum(1 for dc in gate_policies if dc.passed)
+        if total_gate > 0:
+            compliance_rate = (passed_gate / total_gate) * 100.0
         else:
             compliance_rate = 100.0
             
