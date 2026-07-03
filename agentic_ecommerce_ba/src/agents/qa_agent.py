@@ -169,14 +169,14 @@ class QAAgent(BaseAgent):
                     "id": "DC-02",
                     "name": "Secure Transaction Signature",
                     "message": "Ensure transaction completing uses secure checksum or digital signature validation",
-                    "keywords": ["signature", "secure", "checksum", "payment gate", "hash", "secret", "payment", "idempotent", "auth"],
+                    "keywords": ["signature", "checksum", "payment gate", "hash", "secret", "idempotent"],
                     "severity": "CRITICAL"
                 },
                 {
                     "id": "DC-03",
                     "name": "Order Status Management",
                     "message": "Define explicit state transitions (e.g. pending, paid, failed, success)",
-                    "keywords": ["status", "pending", "paid", "success", "failed", "completed"],
+                    "keywords": ["pending", "paid", "failed", "completed"],
                     "severity": "HIGH"
                 },
                 {
@@ -330,6 +330,8 @@ class QAAgent(BaseAgent):
         has_rag = bool(rag_context and rag_context.strip())
         if has_rag and rag_faithfulness_score < 90.0:
             reasons.append(f"Low RAG Faithfulness: {rag_faithfulness_score:.1f}% < 90% target")
+        elif not has_rag and rag_faithfulness_score < 50.0:
+            reasons.append(f"No RAG context provided — Faithfulness baseline: {rag_faithfulness_score:.1f}% (hallucination risk)")
 
         if reasons:
             is_approved = False
