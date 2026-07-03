@@ -51,20 +51,8 @@ class BaseAgent:
             self.client = genai.Client(api_key=keys[0])
             logger.info(f"Đã khởi tạo [{self.role_name}] sử dụng não bộ {self.model_name} | Key Pool: {len(keys)} key(s)")
 
-    # Bảng Model dự phòng: nếu model chính bận, tụt xuống model phụ 
-    FALLBACK_MODELS = {
-        "gemini-2.5-flash": "gemini-1.5-flash",
-        "gemini-2.5-pro": "gemini-2.5-flash",
-        "gemini-2.0-flash": "gemini-2.5-flash",
-        "gemini-2.0-pro-exp-02-05": "gemini-2.5-flash",
-        "gemini-1.5-pro": "gemini-2.5-flash",
-        "gemini-1.5-flash": "gemini-2.5-flash",
-        "gemini-flash-latest": "gemini-2.5-flash",
-    }
-
-
     def call_llm(self, system_prompt: str, user_prompt: str, pydantic_schema: Type[BaseModel] = None, image_data=None) -> Any:
-        """Thực thi Gọi LLM với cơ chế Round-Robin Key + Auto-Retry + Fallback Model."""
+        """Thực thi Gọi LLM với cơ chế Round-Robin Key + Auto-Retry."""
         system_prompt += "\n\nCRITICAL RULE: You MUST output all your responses, JSON values, and descriptions in ENGLISH ONLY."
         
         self.last_run_metadata = {
@@ -75,23 +63,18 @@ class BaseAgent:
         }
         start_time = _time.time()
         
+        # Chỉ sử dụng duy nhất gemini-2.5-flash để tránh 404
         models_to_try = [self.model_name]
-        
-        # Extended fallback chain to handle 503 high demand
-        fallback_chain = ["gemini-2.5-flash", "gemini-1.5-flash"]
-        for f in fallback_chain:
-            if f not in models_to_try:
-                models_to_try.append(f)
-        
-        
+        if "gemini-2.5-flash" not in models_to_try:
+            models_to_try.append("gemini-2.5-flash")
+            
         last_error = None
         
         for model_idx, current_model in enumerate(models_to_try):
             keys = Config.get_api_keys()
             num_keys = len(keys)
-            # Thử mỗi key 1 lần + thêm 1 retry nữa = tối đa num_keys + 1
             max_retries = num_keys + 1
-            exhausted_keys = set()  # Track key nào đã bị 429
+            exhausted_keys = set()
             
             if model_idx > 0:
                 logger.warning(f"[{self.role_name}] 🔄 Model {models_to_try[model_idx-1]} quá tải! Chuyển sang dự phòng: {current_model}")
@@ -125,7 +108,6 @@ class BaseAgent:
                         config=gen_config
                     )
                     
-                    # Capture token usage
                     if hasattr(response, 'usage_metadata') and response.usage_metadata:
                         self.last_run_metadata['tokens'] = getattr(response.usage_metadata, 'total_token_count', 0)
                         self.last_run_metadata['input_tokens'] = getattr(response.usage_metadata, 'prompt_token_count', 0)
@@ -145,22 +127,16 @@ class BaseAgent:
                                 clean_json = clean_json[7:-3].strip()
                             elif clean_json.startswith("```"):
                                 clean_json = clean_json[3:-3].strip()
-                                
                             data_dict = json.loads(clean_json)
                             return pydantic_schema(**data_dict)
-                        except json.JSONDecodeError as e:
-                            logger.error(f"[{self.role_name}] Lỗi Parse JSON: {e}")
-                            raise
-                        except ValidationError as e:
-                            logger.error(f"[{self.role_name}] Lỗi Data Contract: {e}")
+                        except (json.JSONDecodeError, ValidationError) as e:
+                            logger.error(f"[{self.role_name}] Lỗi Parse JSON hoặc Validation: {e}")
                             raise
                     
                     try:
                         res_json = json.loads(response.text)
-                        self.last_run_metadata['time'] = round(_time.time() - start_time, 2)
                         return res_json
                     except:
-                        self.last_run_metadata['time'] = round(_time.time() - start_time, 2)
                         return response.text
                     
                 except Exception as e:
@@ -175,31 +151,27 @@ class BaseAgent:
                     
                     if is_rate_limit:
                         exhausted_keys.add(key_suffix)
-                        # Nếu tất cả key đều bị 429 → chuyển model dự phòng ngay
                         if len(exhausted_keys) >= num_keys and model_idx < len(models_to_try) - 1:
-                            logger.warning(f"[{self.role_name}] Tất cả {num_keys} key đều bị rate-limit cho {current_model}. Chuyển model dự phòng ngay!")
+                            logger.warning(f"[{self.role_name}] Tất cả key đều bị rate-limit. Đổi model...")
                             break
                     
                     if is_retryable and attempt < max_retries - 1:
-                        wait_time = 5  # Chờ 5s rồi đổi key (thay vì 20s)
-                        logger.warning(f"[{self.role_name}] Key ...{key_suffix} lỗi ({error_str[:50]}...). Đổi key, chờ {wait_time}s...")
+                        wait_time = 5
+                        logger.warning(f"[{self.role_name}] Key ...{key_suffix} lỗi. Chờ {wait_time}s...")
                         _time.sleep(wait_time)
                         continue
                     elif is_retryable and model_idx < len(models_to_try) - 1:
-                        # Hết key cho model này → nhảy sang model dự phòng
-                        logger.warning(f"[{self.role_name}] Hết key cho {current_model}. Thử model dự phòng...")
                         break
                     else:
                         logger.error(f"[{self.role_name}] Gọi LLM Thất bại: {error_str}")
                         raise e
         
-        # Nếu tất cả model + key đều thất bại
         raise last_error
 
-    def call_llm_stream(self, system_prompt: str, user_prompt: str, pydantic_schema: Type[BaseModel] = None, 
-                        stream_callback=None, image_data=None) -> Any:
-        """Streaming variant of call_llm. Yields chunks to stream_callback(accumulated_text) in real-time,
-        then parses the final accumulated JSON into pydantic_schema."""
+    def call_llm_stream(self, system_prompt: str, user_prompt: str, image_data: Any = None, 
+                       pydantic_schema: Optional[Type[BaseModel]] = None, 
+                       stream_callback: Optional[callable] = None) -> Any:
+        """Streaming variant of call_llm."""
         system_prompt += "\n\nCRITICAL RULE: You MUST output all your responses, JSON values, and descriptions in ENGLISH ONLY."
         
         self.last_run_metadata = {
@@ -211,14 +183,9 @@ class BaseAgent:
         start_time = _time.time()
         
         models_to_try = [self.model_name]
-        
-        # Extended fallback chain to handle 503 high demand
-        fallback_chain = ["gemini-2.5-flash", "gemini-1.5-flash"]
-        for f in fallback_chain:
-            if f not in models_to_try:
-                models_to_try.append(f)
-        
-        
+        if "gemini-2.5-flash" not in models_to_try:
+            models_to_try.append("gemini-2.5-flash")
+            
         last_error = None
         
         for model_idx, current_model in enumerate(models_to_try):
@@ -228,7 +195,7 @@ class BaseAgent:
             exhausted_keys = set()
             
             if model_idx > 0:
-                logger.warning(f"[{self.role_name}] 🔄 Streaming fallback to: {current_model}")
+                logger.warning(f"[{self.role_name}] 🔄 Model {models_to_try[model_idx-1]} quá tải! Chuyển sang dự phòng: {current_model}")
             
             for attempt in range(max_retries):
                 current_key = _get_next_key()
@@ -266,12 +233,10 @@ class BaseAgent:
                             if stream_callback:
                                 try:
                                     stream_callback(full_text)
-                                except Exception:
-                                    pass  # UI callback errors should not break the stream
-                    
+                                except Exception: pass
+                                
                     self.last_run_metadata['time'] = round(_time.time() - start_time, 2)
                     
-                    # Parse the accumulated text
                     if pydantic_schema:
                         try:
                             clean_json = full_text.strip()
@@ -282,14 +247,15 @@ class BaseAgent:
                             data_dict = json.loads(clean_json)
                             return pydantic_schema(**data_dict)
                         except (json.JSONDecodeError, ValidationError) as e:
-                            logger.error(f"[{self.role_name}] Stream parse error: {e}")
+                            logger.error(f"[{self.role_name}] Stream Lỗi Parse JSON hoặc Validation: {e}")
                             raise
-                    
+                            
                     try:
-                        return json.loads(full_text)
-                    except Exception:
+                        res_json = json.loads(full_text)
+                        return res_json
+                    except:
                         return full_text
-                    
+                        
                 except Exception as e:
                     last_error = e
                     error_str = str(e)
@@ -303,20 +269,18 @@ class BaseAgent:
                     if is_rate_limit:
                         exhausted_keys.add(key_suffix)
                         if len(exhausted_keys) >= num_keys and model_idx < len(models_to_try) - 1:
-                            logger.warning(f"[{self.role_name}] Tất cả {num_keys} key đều bị rate-limit cho {current_model}. Chuyển model dự phòng ngay!")
+                            logger.warning(f"[{self.role_name}] Stream: Hết key cho {current_model}. Đổi model...")
                             break
-                    
+                            
                     if is_retryable and attempt < max_retries - 1:
                         wait_time = 5
-                        logger.warning(f"[{self.role_name}] Stream key ...{key_suffix} error ({error_str[:50]}...). Rotating, wait {wait_time}s...")
+                        logger.warning(f"[{self.role_name}] Stream: Key ...{key_suffix} lỗi. Đổi key, chờ {wait_time}s...")
                         _time.sleep(wait_time)
                         continue
                     elif is_retryable and model_idx < len(models_to_try) - 1:
-                        logger.warning(f"[{self.role_name}] Out of keys for {current_model}. Trying fallback...")
                         break
                     else:
-                        logger.error(f"[{self.role_name}] Stream LLM failed: {error_str}")
+                        logger.error(f"[{self.role_name}] Stream Thất bại: {error_str}")
                         raise e
-        
+                        
         raise last_error
-
