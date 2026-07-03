@@ -1131,7 +1131,7 @@ def main():
                 else:
                     st.session_state.pdf_bytes = None
                 
-                for key in ['cache_vision', 'cache_ba', 'cache_diagram', 'cache_qa', 'export_docx_bytes', 'export_pdf_bytes', 'export_error']:
+                for key in ['cache_vision', 'cache_ba', 'cache_diagram', 'cache_qa', 'export_docx_bytes', 'export_pdf_bytes', 'export_error', 'rag_context']:
                     st.session_state[key] = None
                 st.session_state.vector_store = RAGVectorStore()
                 if 'eval_session_id' not in st.session_state or st.session_state.eval_session_id is None:

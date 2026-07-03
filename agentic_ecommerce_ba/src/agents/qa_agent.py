@@ -162,21 +162,21 @@ class QAAgent(BaseAgent):
                     "id": "DC-01",
                     "name": "Cart Inventory Validation",
                     "message": "Verify that cart checkout validates item stock availability",
-                    "keywords": ["stock", "inventory", "quantity", "availab", "cart", "item", "product", "order", "add to cart", "remove"],
+                    "keywords": ["stock", "inventory", "quantity", "availab"],
                     "severity": "CRITICAL"
                 },
                 {
                     "id": "DC-02",
                     "name": "Secure Transaction Signature",
                     "message": "Ensure transaction completing uses secure checksum or digital signature validation",
-                    "keywords": ["signature", "secure", "checksum", "payment gate", "hash", "secret", "payment", "idempotent", "auth", "checkout", "transaction", "confirm", "ssl", "encrypt"],
+                    "keywords": ["signature", "secure", "checksum", "payment gate", "hash", "secret", "payment", "idempotent", "auth"],
                     "severity": "CRITICAL"
                 },
                 {
                     "id": "DC-03",
                     "name": "Order Status Management",
                     "message": "Define explicit state transitions (e.g. pending, paid, failed, success)",
-                    "keywords": ["status", "pending", "paid", "success", "failed", "completed", "order", "confirm", "processing", "state", "submit"],
+                    "keywords": ["status", "pending", "paid", "success", "failed", "completed"],
                     "severity": "HIGH"
                 },
                 {
